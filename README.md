@@ -17,4 +17,8 @@ Contact: maximilian.schmitt@uni-passau.de
 Any form of commercial use and redistribution is prohibited, unless another agreement between you and the copyright holder exists.  
 
 If you use openXBOW or any code from openXBOW in your research work, you are kindly asked to acknowledge the use of openXBOW in your publications.  
-See the file CITING.txt for details.
+
+http://arxiv.org/abs/1605.06778  
+Maximilian Schmitt, Björn W. Schuller: openXBOW - Introducing the Passau Open-Source Crossmodal Bag-of-Words Toolkit, arXiv preprint arXiv:1605.06778, 2016  
+
+See also the file CITING.txt for details.

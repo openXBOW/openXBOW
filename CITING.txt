@@ -1,6 +1,8 @@
 If you use openXBOW or any code from openXBOW in your research work, you are kindly asked to acknowledge the use of openXBOW in your publications.
+
 Please cite the following article:
 
-Maximilian Schmitt, Björn Schuller: openXBOW - Introducing the Passau Open-Source Crossmodal Bag-of-Words Toolkit, 2016, upcoming on arXiv.org
+Maximilian Schmitt, Björn W. Schuller: openXBOW - Introducing the Passau Open-Source Crossmodal Bag-of-Words Toolkit, arXiv preprint arXiv:1605.06778, 2016
+http://arxiv.org/abs/1605.06778
 
 Contact: maximilian.schmitt@uni-passau.de

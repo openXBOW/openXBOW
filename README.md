@@ -50,19 +50,19 @@ The file `llds_labels.arff` is another representation of the same LLDs, but here
 
 Now, let's start to generate a bag-of-words output for the sample data. The three following four lines using different input formats should all create the same output arff bag-of-words file.
 
-    java -jar openXBOW.jar -i ../examples/example1/llds.arff -l ../examples/example1/labels.csv -o bow.arff
-    java -jar openXBOW.jar -i ../examples/example1/llds.csv  -l ../examples/example1/labels.csv -o bow.arff
-    java -jar openXBOW.jar -i ../examples/example1/llds_labels.arff -o bow.arff
+    java -jar openXBOW.jar -i examples/example1/llds.arff -l examples/example1/labels.csv -o bow.arff
+    java -jar openXBOW.jar -i examples/example1/llds.csv  -l examples/example1/labels.csv -o bow.arff
+    java -jar openXBOW.jar -i examples/example1/llds_labels.arff -o bow.arff
   
 The command line option `-i` specifies the input file and `-o` the output file. The file format is always recognised automatically based on the file ending. Option `-l` specifies the label file.  
 Of course it is always possible to generate bag-of-words output without a target (class label), such as 
 
-    java -jar openXBOW.jar -i ../examples/example1/llds.csv -o bow.arff
+    java -jar openXBOW.jar -i examples/example1/llds.csv -o bow.arff
 
 A CSV output is generated using `-o bow.csv`. Also LibSVM (Liblinear) output is supported (`-o bow.libsvm`):
 
-    java -jar openXBOW.jar -i ../examples/example1/llds.csv -o bow.csv
-    java -jar openXBOW.jar -i ../examples/example1/llds.csv -o bow.libsvm
+    java -jar openXBOW.jar -i examples/example1/llds.csv -o bow.csv
+    java -jar openXBOW.jar -i examples/example1/llds.csv -o bow.libsvm
 
 Note that, in case of a libsvm output, the labels must be *integers*.  
 
@@ -71,7 +71,7 @@ Also the **number of assignments**, i.e., the number of words in the bag represe
 
 To generate a bag-of-words representation with a codebook size of 1000, and 10 assignments per input LLD, use the following command line:
 
-    java -jar openXBOW.jar -i ../examples/example1/llds_labels.arff -o bow.arff -size 1000 -a 10
+    java -jar openXBOW.jar -i examples/example1/llds_labels.arff -o bow.arff -size 1000 -a 10
 
 Until now, we generated the codebook by a **random sampling** of all LLDs in the input file. More precisely, per default, the initialisation step of the *k-means++* clustering algorithm is executed, but the cluster centroids are not updated. In this initialisation step, the codebook vectors (words/templates) are selected subsequently while favouring vectors which are farther away (in terms of Euclidean distance) from the already selected ones. Random sampling is much faster than clustering while obtaining almost the same final performance. **k-means++** is employed when using `-c kmeans++`. Also the *standard k-means clustering* (`-c kmeans`) and a standard random sampling (`-c random`) are available.  
 Right now, we know how to generate different codebooks, but so far, the codebook is always learnt from the whole given input sequence. In supervised learning (as the main application of the bag-of-words representation), however, we usually need to evaluate a method on completely unseen *test data*.  
@@ -79,11 +79,11 @@ To accomplish this, the codebook needs to be *stored* and then *loaded* when use
 
 In the following line, a codebook of size 200 is learnt using kmeans++ clustering, first and is then stored in the file `codebook`. At the same time, a bag-of-words representation using multi assignment of the input is generated and stored (`bow.arff`).  
 
-    java -jar openXBOW.jar -i ../examples/example1/llds_labels.arff -o bow.arff -a 5 -c kmeans++ -size 200 -B codebook
+    java -jar openXBOW.jar -i examples/example1/llds_labels.arff -o bow.arff -a 5 -c kmeans++ -size 200 -B codebook
 
 In the following line, the learnt codebook is loaded and applied to the same input data. (Applying the codebook to the same data does not make sense, of course, this is just to exemplify the usage.) The format of the codebook is a text format and readable quite easily, you can have a look opening `codebook` with a text editor.
 
-    java -jar openXBOW.jar -i ../examples/example1/llds_labels.arff -o bow.arff -a 5 -b codebook
+    java -jar openXBOW.jar -i examples/example1/llds_labels.arff -o bow.arff -a 5 -b codebook
 
 Please note that, in case consistency between training and test data is targeted, the parameter for multi assignment `-a 5` must be repeated when processing the test data.  
 
@@ -109,18 +109,18 @@ This can be triggered using the option `-t` with the two parameters *block/windo
 
 Use the following lines to generate time-dependent bags from the data of example2:
 
-    java -jar openXBOW.jar -i ../examples/example2/llds.csv -l ../examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 200 -B codebook
-    java -jar openXBOW.jar -i ../examples/example2/llds.csv -l ../examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -b codebook
+    java -jar openXBOW.jar -i examples/example2/llds.csv -l examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 200 -B codebook
+    java -jar openXBOW.jar -i examples/example2/llds.csv -l examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -b codebook
 
 The name of the sequences and the time stamps of the resulting frames can be added in the output files like this:
 
-    java -jar openXBOW.jar -i ../examples/example2/llds.csv -l ../examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 200 -B codebook -writeName -writeTimeStamp
+    java -jar openXBOW.jar -i examples/example2/llds.csv -l examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 200 -B codebook -writeName -writeTimeStamp
 
 Here, a block size of 5.0 seconds is taken into account to generate the bags, i.e., a period of 2.5 seconds around each time stamp specified by the hop size 0.5 seconds. Note that the hop size in the given labels file (2nd column) must correspond to that specified in the command line.
 
 It is also possible to further split the input llds into two or more subsets, where for each subset, a separate codebook is trained. The bags are then generated independently for each subset of LLDs and finally fused. This can be configured with the `-attributes` options which is followed by a string specifying the function of each input column (or attribute in ARFF). More information is found in the help text. Here is an example, where the first 5 LLDs form the first subset (with codebook 1) and the second 5 LLDs form the second subset (with codebook 2). Note that the size of each codebook is also specified by the `size` option. The first attribute specifies the name (`n`), the second the time stamp (`t`). After the codebook indexes (`1`) and (`2`), the number of subsequent LLDs in the corresponding subset are specified in brackets `[]`.
 
-    java -jar openXBOW.jar -i ../examples/example2/llds.csv -attributes nt1[5]2[5] -l ../examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 50,100 -B codebook -writeName -writeTimeStamp
+    java -jar openXBOW.jar -i examples/example2/llds.csv -attributes nt1[5]2[5] -l examples/example2/labels.csv -t 5.0 0.5 -o bow.arff -a 1 -c kmeans++ -size 50,100 -B codebook -writeName -writeTimeStamp
 
 
 ## Example 3 - Generation of a Bag-of-Words Representation from Crossmodal Input Data
@@ -128,7 +128,7 @@ It is also possible to further split the input llds into two or more subsets, wh
 In this example, we look at crossmodal (multimodal - numeric and symbolic) input.  
 In the folder `example3`, you find a simple example for sentiment analysis (positive,negative) based on crossmodal input data. The first attribute in this ARFF file specifies the name (as always required) of each sample to be classified. Then, there are four numeric descriptors (e.g., acoustic and/or visual features), a string attribute with the transcription of what is said and the class label (pos,neg). Please note that the data here are random and this is just to exemplify the format required for openXBOW. E.g., in a real setting using acoustic features and text, the rate of the acoustic features would be much higher than the rate of the words. Thus, much more text would be empty `''`. All input having the same `name` attribute is now transformed into a bag-of-words representation:
 
-    java -jar openXBOW.jar -i ../examples/example3/crossmodal.arff -o bow.arff -c kmeans++ -size 4 -B codebook -writeName
+    java -jar openXBOW.jar -i examples/example3/crossmodal.arff -o bow.arff -c kmeans++ -size 4 -B codebook -writeName
 
 If you open the generated `codebook` with a text editor, you will see that two codebooks have been generated automatically, i.e., a symbolic codebook (`codebookText` or dictionary) and a numeric codebook (`codebookNumeric`). The first four lines after the `codebookText` statement specify characters that are always removed from the text input, the number of *n-grams* and *n-character-grams* (default is 1-grams and no character-grams) and the number of words.  
 Note that all text is converted to uppercase automatically as in a crossmodal use case, the text input usually originates from an automatic speech recognition system which outputs mostly all in uppercase. Furthermore, the case implies usually very little information.  
@@ -136,8 +136,8 @@ The bags from the two (or more, as we have not explicitly specified the numeric 
 
 If you prefer to use **late fusion**, this is also possible of course with openXBOW. Use the two following lines to generate in-domain bag-of-words:
 
-    java -jar openXBOW.jar -i ../examples/example3/crossmodal.arff -attributes n1[4]rc -o bowNumeric.arff -c kmeans++ -size 4 -B codebookNumeric -writeName
-    java -jar openXBOW.jar -i ../examples/example3/crossmodal.arff -attributes nr[4]0c -o bowText.arff -B codebookText -writeName
+    java -jar openXBOW.jar -i examples/example3/crossmodal.arff -attributes n1[4]rc -o bowNumeric.arff -c kmeans++ -size 4 -B codebookNumeric -writeName
+    java -jar openXBOW.jar -i examples/example3/crossmodal.arff -attributes nr[4]0c -o bowText.arff -B codebookText -writeName
 
 The `attributes` option is essential here as it removes the input features not wanted `r`. **The index `0` is always reserved for the symbolic (text) input**, so, the 6th attribute in the input file is text, the last attribute (`c`) is the class label.
 

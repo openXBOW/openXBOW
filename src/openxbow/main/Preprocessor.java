@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.main;
 
@@ -32,14 +36,14 @@ public class Preprocessor {
     private boolean       bStandardize;
     private boolean       bNormalize;
     
-    public Preprocessor(DataManager DM, HyperCodebook book, boolean bRemoveLowEnergy, int energyIndex, float energyThreshold, boolean bStandardize, boolean bNormalize) {
+    public Preprocessor(DataManager DM, HyperCodebook book, Options options) {
         this.DM               = DM;
         this.book             = book;
-        this.bRemoveLowEnergy = bRemoveLowEnergy;
-        this.energyIndex      = energyIndex;
-        this.energyThreshold  = energyThreshold;
-        this.bStandardize     = bStandardize;
-        this.bNormalize       = bNormalize;
+        this.bRemoveLowEnergy = options.bRemoveLowEnergy;
+        this.energyIndex      = options.energyIndex;
+        this.energyThreshold  = options.energyThreshold;
+        this.bStandardize     = options.bStandardizeInput;
+        this.bNormalize       = options.bNormalizeInput;
     }
     
     public void preprocessInput() {
@@ -61,28 +65,32 @@ public class Preprocessor {
         }
         
         if (bStandardize) {
-            float[] means        = getMeans(DM.reader);
-            float[] standardDevs = getStandardDevs(DM.reader, means);
-            book.setStandardize();
-            book.setMeans(means);
-            book.setStandardDevs(standardDevs);
-            standardizeFeatureVectors(DM.reader, means, standardDevs);
-        }
-        else if (book.isStandardized()) {
-            standardizeFeatureVectors(DM.reader, book.getMeans(), book.getStandardDevs());
+            if (book.getMeans()==null) {  /* NOTE: It is decided whether or not a codebook is given! */
+                float[] means        = getMeans(DM.reader);
+                float[] standardDevs = getStandardDevs(DM.reader, means);
+                book.setStandardize();
+                book.setMeans(means);
+                book.setStandardDevs(standardDevs);
+                standardizeFeatureVectors(DM.reader, means, standardDevs);
+            }
+            else {
+                standardizeFeatureVectors(DM.reader, book.getMeans(), book.getStandardDevs());
+            }
         }
         
         if (bNormalize) {
-            List<float[]> MINandWIDTH = getMINandWIDTH(DM.reader);
-            float[] MIN   = MINandWIDTH.get(0);
-            float[] WIDTH = MINandWIDTH.get(1);
-            book.setNormalize();
-            book.setMIN(MIN);
-            book.setWIDTH(WIDTH);
-            normalizeFeatureVectors(DM.reader, MIN, WIDTH);
-        }
-        else if (book.isNormalized()) {
-            normalizeFeatureVectors(DM.reader, book.getMIN(), book.getWIDTH());
+            if (book.getMIN()==null) {  /* NOTE: It is decided whether or not a codebook is given! */
+                List<float[]> MINandWIDTH = getMINandWIDTH(DM.reader);
+                float[] MIN   = MINandWIDTH.get(0);
+                float[] WIDTH = MINandWIDTH.get(1);
+                book.setNormalize();
+                book.setMIN(MIN);
+                book.setWIDTH(WIDTH);
+                normalizeFeatureVectors(DM.reader, MIN, WIDTH);
+            }
+            else {
+                normalizeFeatureVectors(DM.reader, book.getMIN(), book.getWIDTH());
+            }
         }
     }
     
@@ -101,7 +109,7 @@ public class Preprocessor {
     
     
     private void standardizeFeatureVectors(Reader reader, float[] mean, float[] std) {
-        System.out.println("Standardization ...");
+        System.out.println("Standardization of the input ...");
         
         List<Object[]> inputData = reader.inputData;
         
@@ -171,7 +179,7 @@ public class Preprocessor {
     
     
     private void normalizeFeatureVectors(Reader reader, float[] MIN, float[] WIDTH) {
-        System.out.println("Normalization ...");
+        System.out.println("Normalization of the input ...");
         
         List<Object[]> inputData = reader.inputData;
         

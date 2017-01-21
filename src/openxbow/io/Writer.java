@@ -1,26 +1,31 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.io;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Vector;
 
 import openxbow.main.DataManager;
@@ -33,17 +38,24 @@ public class Writer {
     private String[]    fileNames;
     private ftype[]     fileTypes;
     private String      relation;
-    private String[]    strLabels;
+    private String[]    strLabels = null;
     private DataManager DM;
     private boolean     bWriteName;
     private boolean     bWriteTime;
+    private boolean     bAppend;
     
-    public Writer(String fileName, String relation, DataManager DM, boolean bWriteName, boolean bWriteTimeStamp) {
+    public Writer(String fileName, DataManager DM, boolean bWriteName, boolean bWriteTimeStamp, String arffLabels, boolean bAppend) {
         this.fileNames  = fileName.split(",");  /* Multiple output files, separated by comma, may be given (so far, multiple labels are required in this case) */
         this.DM         = DM;
         this.bWriteName = bWriteName;
         this.bWriteTime = bWriteTimeStamp;
-        this.relation   = "'bag-of-features representation of " + relation.replace("'", "") + "'";
+        this.bAppend    = bAppend;
+        this.relation   = "'bag-of-features representation of " + DM.reader.getRelation().replace("'", "") + "'";
+        
+        if (!arffLabels.isEmpty()) {  /* Labels string has been set manually */
+            this.strLabels    = new String[1];
+            this.strLabels[0] = "{" + arffLabels + "}";
+        }
         
         this.fileTypes = new ftype[this.fileNames.length];
         
@@ -67,60 +79,66 @@ public class Writer {
     public boolean writeFile(HyperBag hyperBag) {
         float[][] bof = hyperBag.getBag().bof;
         
-        if (!DM.getMappingIDLabels().isEmpty()) {
+        if (!DM.getMappingIDLabels().isEmpty() && strLabels==null) {
             generateStrLabels();
         }
         
         try {
             for (int f=0; f < fileNames.length; f++) {
-                File outputFile = new File(fileNames[f]);
+                File    outputFile   = new File(fileNames[f]);
+                boolean bFileCreated = false;
                 
                 if (!outputFile.exists()) {
                     outputFile.createNewFile();
+                    bFileCreated = true; /* Header is always written (ARFF). */
                 }
                 
-                FileWriter     fw = new FileWriter(outputFile.getAbsoluteFile());
+                FileWriter     fw = new FileWriter(outputFile.getAbsoluteFile(),bAppend);
                 BufferedWriter bw = new BufferedWriter(fw);
                 
                 if (fileTypes[f]==ftype.ARFF) {
-                    /* relation */
-                    bw.write("@relation " + relation);
-                    bw.newLine(); bw.newLine();
-                    
-                    /* attributes */
-                    if (bWriteName) {
-                        bw.write("@attribute name string");
-                        bw.newLine();
-                    }
-                    if (bWriteTime) {
-                        bw.write("@attribute time numeric");
-                        bw.newLine();
-                    }
-                    for (int i=0; i < bof[0].length; i++) {
-                        bw.write("@attribute W(" + String.valueOf(i) + ") numeric");
-                        bw.newLine();
-                    }
-                    if (strLabels!=null) {
-                        for (int m=0; m < strLabels.length; m++) {
-                            if (m==0) {
-                                bw.write("@attribute class " + strLabels[m]);
-                            } else {
-                                bw.write("@attribute class" + String.valueOf(m) + " " + strLabels[m]);
-                            }
+                    /* Header */
+                    if (bFileCreated || !bAppend) {
+                        /* relation */
+                        bw.write("@relation " + relation);
+                        bw.newLine(); bw.newLine();
+                        
+                        /* attributes */
+                        if (bWriteName) {
+                            bw.write("@attribute name string");
                             bw.newLine();
                         }
+                        if (bWriteTime) {
+                            bw.write("@attribute time numeric");
+                            bw.newLine();
+                        }
+                        for (int i=0; i < bof[0].length; i++) {
+                            bw.write("@attribute W(" + String.valueOf(i) + ") numeric");
+                            bw.newLine();
+                        }
+                        if (strLabels!=null) {
+                            for (int m=0; m < strLabels.length; m++) {
+                                if (m==0) {
+                                    bw.write("@attribute class " + strLabels[m]);
+                                } else {
+                                    bw.write("@attribute class" + String.valueOf(m) + " " + strLabels[m]);
+                                }
+                                bw.newLine();
+                            }
+                        }
+                        bw.newLine();
+                        
+                        bw.write("@data");
+                        bw.newLine();
                     }
-                    bw.newLine();
                     
-                    // data
-                    bw.write("@data");
-                    bw.newLine();
+                    /* Features */
                     for (int i=0; i < bof.length; i++) {
                         if (bWriteName) {
                             bw.write("'" + DM.getMappingIDName().get(i) + "',");
                         }
                         if (bWriteTime) {
-                            bw.write(DM.getMappingIDTime().get(i) + ",");
+                            bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ",");
                         }
                         for (int j=0; j < bof[0].length; j++) {
                             bw.write(String.valueOf(bof[i][j]));
@@ -129,15 +147,19 @@ public class Writer {
                             }
                         }
                         if (strLabels!=null) {
-                            for (int m=0; m < strLabels.length; m++) {
-                                String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
-                                bw.write(",");
-                                bw.write(String.valueOf(curLabel));
+                            if (!DM.getMappingIDLabels().isEmpty()) {
+                                for (int m=0; m < strLabels.length; m++) {
+                                    String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
+                                    bw.write(",");
+                                    bw.write(String.valueOf(curLabel));
+                                }
+                            } else {  /* No labels given, but -arffLabels set */
+                                bw.write(",?");
                             }
                         }
                         bw.newLine();
                     }
-                }      
+                }
                 
                 else if (fileTypes[f]==ftype.CSV) {
                     for (int i=0; i < bof.length; i++) {
@@ -145,7 +167,7 @@ public class Writer {
                             bw.write("'" + DM.getMappingIDName().get(i) + "';");
                         }
                         if (bWriteTime) {
-                            bw.write(DM.getMappingIDTime().get(i) + ";");
+                            bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ";");
                         }
                         for (int j=0; j < bof[0].length; j++) {
                             bw.write(String.valueOf(bof[i][j]));
@@ -176,7 +198,7 @@ public class Writer {
                         }
                         bw.write(" ");
                         for (int j=0; j < bof[0].length; j++) {
-                            if (bof[i][j] > Float.MIN_NORMAL) {
+                            if (bof[i][j] > Float.MIN_NORMAL || bof[i][j] < -Float.MIN_NORMAL) {
                                 bw.write(String.valueOf(j+1) + ":" + String.valueOf(bof[i][j]));
                                 bw.write(" ");
                             }

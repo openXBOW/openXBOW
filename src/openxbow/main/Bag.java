@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.main;
 
@@ -54,7 +58,7 @@ public class Bag {
     }
     
     
-    public void generateBoW (String stopCharacters, int nGram, int nCharGram) {
+    public void generateBoW () {
         CodebookText bookText = (CodebookText)book;
         
         int sizeCodebook = bookText.getCodebook().length;
@@ -81,7 +85,7 @@ public class Bag {
                 text = text.concat(" ");
             }
             
-            String[] wordVector = s2wv.string2WordVector(text, stopCharacters, nGram, nCharGram);
+            String[] wordVector = s2wv.string2WordVector(text, bookText.getStopCharacters(), bookText.getNGram(), bookText.getNCharGram());
             
             for (int k=0; k < wordVector.length; k++) {
                 for (int j=0; j < sizeCodebook; j++) {
@@ -101,7 +105,7 @@ public class Bag {
     }
     
     
-    public void generateBoF (int numAssignments, boolean bGaussianEncoding, float gaussianStdDev) {
+    public void generateBoF (int numAssignments, boolean bGaussianEncoding, float gaussianStdDev, boolean bGetAssignments) {
         CodebookNumeric bookNumeric = (CodebookNumeric)book;
         float[][]       codebook    = bookNumeric.getCodebook();
         
@@ -113,7 +117,9 @@ public class Bag {
         if (DM!=null) {
             mapFrameIDs = DM.getMappingFrameIDs();
             bof = new float[DM.getNumIDs()][sizeCodebook];
-        } else {
+            
+        }
+        if (bGetAssignments) {  /* Writing word indexes or SVQ */
             assignments = new Object[data.size()];
         }
         
@@ -153,9 +159,11 @@ public class Bag {
                     }
                 }
                 
-                if (assignments!=null) { /* SVQ */
-                    assignments[frameIndex] = (float) minIndex;  /* Must convert to float, otherwise "Convert features to float array" would fail. a must be = 1 */
-                } else {
+                if (assignments!=null) {
+                    assignments[frameIndex] = (float) minIndex;  /* Must convert to float, otherwise getTrainingFeatures() in CodebookTrainingSelector fails. a must be = 1 */
+                }
+                
+                if (mapFrameIDs!=null) {
                     /* Increase the counter for all corresponding instances (IDs) */
                     for (int id=0; id < mapFrameIDs.get(frameIndex).size(); id++) {
                         if (bGaussianEncoding) {
@@ -173,6 +181,17 @@ public class Bag {
             }
             
             frameIndex++;
+        }
+        
+        /* Make sure that we do not have a bag of only zeros */
+        if (mapFrameIDs != null) {
+            for (int id=0; id < bof.length; id++) {
+                if (DM.getNumFrames().get(id)==0) {
+                    for (int w=0; w < bof[0].length; w++) {
+                        bof[id][w] = 0.001f;
+                    }
+                }
+            }            
         }
     }
     

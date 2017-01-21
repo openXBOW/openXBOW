@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.codebooks;
 
@@ -30,126 +34,101 @@ import java.util.Map.Entry;
 
 import openxbow.main.DataManager;
 import openxbow.main.HyperBag;
+import openxbow.main.Options;
 
 public class HyperCodebook {
-    private DataManager     DM            = null;
-    private int             numSubVectors = 0;
-    private List<Codebook>  codebooks     = null;
-    private CodebookNumeric codebookSVQ   = null;
+    private DataManager DM      = null;
+    private Options     options = null;
     
+    private List<Codebook>        codebooks = null;
     private Map<Codebook,Integer> indexBook = null;  /* Feature index for each codebook, only if no SVQ is used */
     
-    /* Preprocessing parameters */
-    private boolean bRemoveLowEnergy = false;
-    private int     energyIndex      = -1;
-    private float   energyThreshold  = 0.0f;
-    
-    private boolean bStandardize  = false;
+    /* Preprocessing */
     private float[] fMeans        = null;
     private float[] fStandardDevs = null;
-    private boolean bNormalize    = false;
     private float[] fMIN          = null;
     private float[] fWIDTH        = null;
     
-    /* Term weighting parameters (for codebook) */
-    private boolean bLogWeighting = false;
-    private boolean bIDFWeighting = false;
+    /* Term frequency weighting parameters */
     private float[] dff           = null;
     
+    /* Postprocessing */
+    private float[] fMeansOutput        = null;
+    private float[] fStandardDevsOutput = null;
+    private float[] fMINOutput          = null;
+    private float[] fWIDTHOutput        = null;
     
-    public HyperCodebook(DataManager DM, boolean bLogWeighting, boolean bIDFWeighting) {
-        this(DM, 0, bLogWeighting, bIDFWeighting, "", 0, 0);
-    }
-    public HyperCodebook(DataManager DM, boolean bLogWeighting, boolean bIDFWeighting, String stopCharacters, int nGram, int nCharGram) {
-        this(DM, 0, bLogWeighting, bIDFWeighting, stopCharacters, nGram, nCharGram);
-    }
-    public HyperCodebook(DataManager DM, int numSubVectors, boolean bLogWeighting, boolean bIDFWeighting) {
-        this(DM, numSubVectors, bLogWeighting, bIDFWeighting, "", 0, 0);
-    }
-    public HyperCodebook(DataManager DM, int numSubVectors, boolean bLogWeighting, boolean bIDFWeighting, String stopCharacters, int nGram, int nCharGram) {
-        this.DM                  = DM;
-        this.numSubVectors       = numSubVectors;
-        this.bLogWeighting       = bLogWeighting;
-        this.bIDFWeighting       = bIDFWeighting;
+    
+    public HyperCodebook(DataManager DM, Options options) {
+        this.DM      = DM;
+        this.options = options;
         
         indexBook = new HashMap<Codebook,Integer>();
+        codebooks = new ArrayList<Codebook>();
         
-        if (numSubVectors > 0) {
-            codebookSVQ = new CodebookNumeric();
-            codebooks   = new ArrayList<Codebook>();
-            for (int s=0; s < numSubVectors; s++) {
-                codebooks.add(new CodebookNumeric());  /* All features are numeric for SVQ */
+        if (options.bSVQ) {
+            codebooks.add(new CodebookNumeric(options.cbConfig.get(0)));  /* Top-level codebook (index 0) */
+            for (int s=1; s <= options.numSubCodebooksSVQ; s++) {
+                codebooks.add(new CodebookNumeric(options.cbConfig.get(s)));  /* All features are numeric for SVQ */
             }
         }
         else {
-            codebooks = new ArrayList<Codebook>();
-            
             for (Entry<Integer,List<Integer>> e : DM.reader.getIndexesAttributeClass().entrySet()) {
                 if (e.getKey()==0) {  /* So far, the index in Attributes (0 OR 1-9) decides whether a feature is textual or numeric */
-                    codebooks.add(new CodebookText(stopCharacters, nGram, nCharGram));
+                    codebooks.add(new CodebookText(options.cbConfig.get(e.getKey())));
                 } else {
-                    codebooks.add(new CodebookNumeric());
+                    codebooks.add(new CodebookNumeric(options.cbConfig.get(e.getKey())));
                 }
-                indexBook.put(codebooks.get(codebooks.size()-1), e.getKey());  /* Later on, we must know to which feature class the openxbow.codebooks correspond to */
+                indexBook.put(codebooks.get(codebooks.size()-1), e.getKey());  /* Later on, we must know to which feature class the codebooks correspond to */
             }
         }
     }
     
     
-    public void generateCodebook(int     sizeCodebook, 
-                                 String  generationMethod, 
-                                 boolean bSupervised, 
-                                 int     numTraining,
-                                 int     minTermFreq, 
-                                 int     maxTermFreq) 
-    {
+    public void generateCodebook() {
         /* This function may not be called in case of SVQ */
         for (Codebook book : codebooks) {
             if (book instanceof CodebookText) {
-                ((CodebookText) book).generateCodebook(DM.reader, minTermFreq, maxTermFreq);
+                ((CodebookText) book).generateCodebook(DM.reader);
             } else {
-                CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(DM, bSupervised, indexBook.get(book), numTraining);
-                ((CodebookNumeric) book).generateCodebook(train, generationMethod, sizeCodebook);
+                CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(DM, book.config, indexBook.get(book));
+                ((CodebookNumeric) book).generateCodebook(train);
             }
         }
     }
     
     
-    public void generateCodebookSVQ(HyperBag hyperBag,
-                                    int      sizeCodebook,
-                                    String   generationMethod,
-                                    boolean  bSupervised)
-    {
-        if (numSubVectors > 0) { /* SVQ */
-            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(hyperBag, bSupervised);
-            codebookSVQ.generateCodebook(train, generationMethod, sizeCodebook);
+    public void generateCodebookSVQ(HyperBag hyperBag) {
+        if (options.bSVQ) {
+            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(hyperBag, options.cbConfig.get(0));
+            ((CodebookNumeric) codebooks.get(0)).generateCodebook(train);
         }
     }
     
     
-    public void generateSubCodebooksSVQ(DataManager DM, int sizeSubCodebook, String generationMethod, boolean bSupervised, int numTraining) {
-        if (numSubVectors == 0) {
-            System.err.println("Error in generateSubCodebooks: Not applicable as SVQ is not chosen.");
+    public void generateSubCodebooksSVQ(DataManager DM) {
+        if (!options.bSVQ) {
+            System.err.println("Error in generateSubCodebooksSVQ: Not applicable as SVQ is not chosen.");
             return;
         }
         
         int numFeaturesCodebook = 0;
-        if (Math.floorMod(DM.reader.getNumFeatures(), numSubVectors) > 0) {
-            numFeaturesCodebook = (DM.reader.getNumFeatures() / numSubVectors) + 1;
+        if (Math.floorMod(DM.reader.getNumFeatures(), options.numSubCodebooksSVQ) > 0) {
+            numFeaturesCodebook = (DM.reader.getNumFeatures() / options.numSubCodebooksSVQ) + 1;
         } else {
-            numFeaturesCodebook = DM.reader.getNumFeatures() / numSubVectors;
+            numFeaturesCodebook = DM.reader.getNumFeatures() / options.numSubCodebooksSVQ;
         }
         
-        for (int s=0; s < numSubVectors; s++) {
+        for (int s=1; s <= options.numSubCodebooksSVQ; s++) {
             List<Integer> listIndexes = new ArrayList<Integer>();
-            int indexMin = s*numFeaturesCodebook;
-            int indexMax = Math.min((s+1)*numFeaturesCodebook-1, DM.reader.getNumFeatures()-1);
+            int indexMin = (s-1)*numFeaturesCodebook;
+            int indexMax = Math.min(s*numFeaturesCodebook-1, DM.reader.getNumFeatures()-1);
             for (int k=indexMin; k <= indexMax; k++) {
                 listIndexes.add(DM.reader.getIndexesAttributeClass().get(1).get(k));  /* All features must have index 1 for SVQ */
             }
             
-            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(DM, bSupervised, listIndexes, numTraining);
-            ((CodebookNumeric) codebooks.get(s)).generateCodebook(train, generationMethod, sizeSubCodebook);
+            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(DM, options.cbConfig.get(s),listIndexes);
+            ((CodebookNumeric) codebooks.get(s)).generateCodebook(train);
         }
     }
     
@@ -172,26 +151,36 @@ public class HyperCodebook {
                 content = thisLine.split(";");
                 
                 if (content[0].equals("removeLowEnergy")) {
-                    bRemoveLowEnergy = true;
-                    energyIndex      = Integer.parseInt(content[1]);
-                    energyThreshold  = Float.parseFloat(content[2]); 
+                    options.bRemoveLowEnergy = true;
+                    options.energyIndex      = Integer.parseInt(content[1]);
+                    options.energyThreshold  = Float.parseFloat(content[2]); 
                 }
-                else if (content[0].equals("standardization")) {
-                    bStandardize  = true;
+                else if (content[0].equals("standardizeInput")) {
+                    options.bStandardizeInput = true;
                     fMeans        = parseFloatLine(br.readLine().split(";"));
                     fStandardDevs = parseFloatLine(br.readLine().split(";"));
                 }
-                else if (content[0].equals("normalization")) {
-                    bNormalize = true;
+                else if (content[0].equals("normalizeInput")) {
+                    options.bNormalizeInput = true;
                     fMIN       = parseFloatLine(br.readLine().split(";"));
                     fWIDTH     = parseFloatLine(br.readLine().split(";"));
                 }
                 else if (content[0].equals("log")) {
-                    bLogWeighting = true;
+                    options.bLogWeighting = true;
                 }
                 else if (content[0].equals("idf")) {
-                    bIDFWeighting = true;
+                    options.bIDFWeighting = true;
                     dff = parseFloatLine(br.readLine().split(";"));
+                }
+                else if (content[0].equals("standardizeOutput")) {
+                    options.bStandardizeOutput = true;
+                    fMeansOutput        = parseFloatLine(br.readLine().split(";"));
+                    fStandardDevsOutput = parseFloatLine(br.readLine().split(";"));
+                }
+                else if (content[0].equals("normalizeOutput")) {
+                    options.bNormalizeOutput = true;
+                    fMINOutput   = parseFloatLine(br.readLine().split(";"));
+                    fWIDTHOutput = parseFloatLine(br.readLine().split(";"));                    
                 }
                 else if (content[0].equals("codebookNumeric")) {
                     content = br.readLine().split(";");
@@ -226,6 +215,7 @@ public class HyperCodebook {
                     iCodebook++;
                 }
                 else if (content[0].equals("codebookSVQ")) {
+                    options.bSVQ = true;
                     content = br.readLine().split(";");
                     
                     numCodewords = Integer.parseInt(content[0]);
@@ -239,7 +229,8 @@ public class HyperCodebook {
                         }
                     }
                     
-                    codebookSVQ.setCodebook(codewords);
+                    ((CodebookNumeric)codebooks.get(iCodebook)).setCodebook(codewords);
+                    iCodebook++;
                 }
             }
         } catch (IOException e) {
@@ -280,13 +271,12 @@ public class HyperCodebook {
             FileWriter     fw = new FileWriter(outputFile.getAbsoluteFile());
             BufferedWriter bw = new BufferedWriter(fw);
             
-            /* Preprocessing options */
-            if (bRemoveLowEnergy) {
-                bw.write("removeLowEnergy;" + String.valueOf(energyIndex) + ";" + String.valueOf(energyThreshold));
+            if (options.bRemoveLowEnergy) {
+                bw.write("removeLowEnergy;" + String.valueOf(options.energyIndex) + ";" + String.valueOf(options.energyThreshold));
                 bw.newLine();
             }
-            if (bStandardize) {
-                bw.write("standardization");
+            if (options.bStandardizeInput) {
+                bw.write("standardizeInput");
                 bw.newLine();
                 for (int k=0; k < fMeans.length; k++) {
                     bw.write(String.valueOf(fMeans[k]));
@@ -299,8 +289,8 @@ public class HyperCodebook {
                 }
                 bw.newLine();
             }
-            if (bNormalize) {
-                bw.write("normalization");
+            if (options.bNormalizeInput) {
+                bw.write("normalizeInput");
                 bw.newLine();
                 for (int k=0; k < fMIN.length; k++) {
                     bw.write(String.valueOf(fMIN[k]));
@@ -313,16 +303,44 @@ public class HyperCodebook {
                 }
                 bw.newLine();
             }
-            if (bLogWeighting) {
+            if (options.bLogWeighting) {
                 bw.write("log");
                 bw.newLine();
             }
-            if (bIDFWeighting) {
+            if (options.bIDFWeighting) {
                 bw.write("idf");
                 bw.newLine();
                 for (int k=0; k < dff.length; k++) {
                     bw.write(String.valueOf(dff[k]));
                     if (k < dff.length-1) { bw.write(";"); }
+                }
+                bw.newLine();
+            }
+            if (options.bStandardizeOutput) {
+                bw.write("standardizeOutput");
+                bw.newLine();
+                for (int k=0; k < fMeansOutput.length; k++) {
+                    bw.write(String.valueOf(fMeansOutput[k]));
+                    if (k < fMeansOutput.length-1) { bw.write(";"); }
+                }
+                bw.newLine();
+                for (int k=0; k < fStandardDevsOutput.length; k++) {
+                    bw.write(String.valueOf(fStandardDevsOutput[k]));
+                    if (k < fStandardDevsOutput.length-1) { bw.write(";"); }
+                }
+                bw.newLine();
+            }
+            if (options.bNormalizeOutput) {
+                bw.write("normalizeOutput");
+                bw.newLine();
+                for (int k=0; k < fMINOutput.length; k++) {
+                    bw.write(String.valueOf(fMINOutput[k]));
+                    if (k < fMINOutput.length-1) { bw.write(";"); }
+                }
+                bw.newLine();
+                for (int k=0; k < fWIDTHOutput.length; k++) {
+                    bw.write(String.valueOf(fWIDTHOutput[k]));
+                    if (k < fWIDTHOutput.length-1) { bw.write(";"); }
                 }
                 bw.newLine();
             }
@@ -350,7 +368,11 @@ public class HyperCodebook {
                     numCodewords = codewords.length;
                     numFeatures  = codewords[0].length;
                     
-                    bw.write("codebookNumeric"); bw.newLine();
+                    if (options.bSVQ && codeBook.equals(codebooks.get(0))) {
+                        bw.write("codebookSVQ"); bw.newLine();
+                    } else {
+                        bw.write("codebookNumeric"); bw.newLine();
+                    }
                     
                     /* Write codewords */
                     bw.write(String.valueOf(numCodewords) + ";" + String.valueOf(numFeatures)); bw.newLine();
@@ -361,26 +383,6 @@ public class HyperCodebook {
                             if (k < numFeatures-1) { bw.write(";"); }
                         } bw.newLine();
                     }
-                }
-            }
-            
-            if (codebookSVQ != null) {
-                CodebookNumeric book = codebookSVQ;
-                float[][] codewords = book.getCodebook();
-                
-                numCodewords = codewords.length;
-                numFeatures  = codewords[0].length;
-                
-                bw.write("codebookSVQ"); bw.newLine();
-                
-                /* Write codewords */
-                bw.write(String.valueOf(numCodewords) + ";" + String.valueOf(numFeatures)); bw.newLine();
-                
-                for (int w=0; w < numCodewords; w++) {
-                    for (int k=0; k < numFeatures; k++) {
-                        bw.write(String.valueOf(codewords[w][k]));
-                        if (k < numFeatures-1) { bw.write(";"); }
-                    } bw.newLine();
                 }
             }
             
@@ -396,38 +398,35 @@ public class HyperCodebook {
     public List<Codebook> getCodebooks() {
         return codebooks;
     }
-    public Codebook getCodebookSVQ() {
-        return codebookSVQ;
-    }
     public int getIndexBook(Codebook book) {
         return indexBook.get(book);
     }
     
     /* Low-energy removal */
     public boolean isLowEnergyRemoved() {
-        return bRemoveLowEnergy;
+        return options.bRemoveLowEnergy;
     }
     public int getEnergyIndex() {
-        return energyIndex;
+        return options.energyIndex;
     }
     public float getEnergyThreshold() {
-        return energyThreshold;
+        return options.energyThreshold;
     }
     
     public void setRemoveLowEnergy() {
-        this.bRemoveLowEnergy = true;
+        this.options.bRemoveLowEnergy = true;
     }
     public void setEnergyIndex(int index) {
-        this.energyIndex = index;
+        this.options.energyIndex = index;
     }
     public void setEnergyThreshold(float threshold) {
-        this.energyThreshold = threshold;
+        this.options.energyThreshold = threshold;
     }
     
     
-    /* Standardization */
+    /* Input features */
     public boolean isStandardized() {
-        return bStandardize;
+        return options.bStandardizeInput;
     }
     public float[] getMeans() {
         return fMeans;
@@ -436,7 +435,7 @@ public class HyperCodebook {
         return fStandardDevs;
     }
     public void setStandardize() {
-        this.bStandardize = true;
+        this.options.bStandardizeInput = true;
     }
     public void setMeans(float[] means) {
         this.fMeans = means;
@@ -445,9 +444,8 @@ public class HyperCodebook {
         this.fStandardDevs = standardDevs;
     }
     
-    /* Normalization */
     public boolean isNormalized() {
-        return bNormalize;
+        return options.bNormalizeInput;
     }
     public float[] getMIN() {
         return fMIN;
@@ -456,7 +454,7 @@ public class HyperCodebook {
         return fWIDTH;
     }
     public void setNormalize() {
-        this.bNormalize = true;
+        this.options.bNormalizeInput = true;
     }
     public void setMIN(float[] MIN) {
         this.fMIN = MIN;
@@ -465,13 +463,52 @@ public class HyperCodebook {
         this.fWIDTH = WIDTH;
     }
     
+    /* Standardization / Normalization of the term frequencies */
+    public boolean isOutputStandardized() {
+        return options.bStandardizeOutput;
+    }
+    public float[] getMeansOutput() {
+        return fMeansOutput;
+    }
+    public float[] getStandardDevsOutput() {
+        return fStandardDevsOutput;
+    }
+    public void setStandardizeOutput() {
+        this.options.bStandardizeOutput = true;
+    }
+    public void setMeansOutput(float[] means) {
+        this.fMeansOutput = means;
+    }
+    public void setStandardDevsOutput(float[] standardDevs) {
+        this.fStandardDevsOutput = standardDevs;
+    }
+    
+    public boolean isOutputNormalized() {
+        return options.bNormalizeOutput;
+    }
+    public float[] getMINOutput() {
+        return fMINOutput;
+    }
+    public float[] getWIDTHOutput() {
+        return fWIDTHOutput;
+    }
+    public void setNormalizeOutput() {
+        this.options.bNormalizeOutput = true;
+    }
+    public void setMINOutput(float[] MIN) {
+        this.fMINOutput = MIN;
+    }
+    public void setWIDTHOutput (float[] WIDTH) {
+        this.fWIDTHOutput = WIDTH;
+    }
+    
     
     public int getSize() {
         /* SVQ:    Returns the size of the top codebook  */
         /* No SVQ: Returns the sum of all codebook sizes */
         int size = 0;
-        if (numSubVectors > 0) {
-            size = codebookSVQ.size();
+        if (options.bSVQ) {
+            size = ((CodebookNumeric) codebooks.get(0)).size();
         }
         else {
             for (Codebook book : codebooks) {
@@ -484,23 +521,23 @@ public class HyperCodebook {
     
     /* Term weighting */
     public boolean getIDFWeighting() {
-        return bIDFWeighting;
+        return options.bIDFWeighting;
     }
     public float[] getDocumentFrequencyFactors() {
         return dff;
     }
     
     public void setIDFWeighting() {
-        this.bIDFWeighting = true;
+        this.options.bIDFWeighting = true;
     }
     public void setDocumentFrequencyFactors(float[] dff) {
         this.dff = dff;
     }
 
     public boolean getLogWeighting() {
-        return bLogWeighting;
+        return options.bLogWeighting;
     }
     public void setLogWeighting() {
-        this.bLogWeighting = true;
+        this.options.bLogWeighting = true;
     }
 }

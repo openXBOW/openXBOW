@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.codebooks;
 
@@ -21,20 +25,20 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import openxbow.codebooks.CodebookConfig.cbgenmethod;
+
 
 public class CodebookNumeric extends Codebook {
     private float[][] codewords = null;
     
-    
-    public CodebookNumeric() {
-        
+    public CodebookNumeric(CodebookConfig config) {
+        super(config);
     }
     
-    public void generateCodebook(CodebookNumericTrainingSelector train, String generationMethod, int sizeCodebook)
-    {
+    public void generateCodebook(CodebookNumericTrainingSelector train) {
         if (train.trainingDataSupervised != null) {
             int       numClasses          = train.trainingDataSupervised.size();
-            int       numClustersPerClass = (int) Math.ceil((double) sizeCodebook / (double) numClasses);
+            int       numClustersPerClass = (int) Math.ceil((double) config.sizeCodebookInitial / (double) numClasses);
             float[][] centroidsClass      = null;
             
             codewords = new float[numClustersPerClass*numClasses][train.trainingDataSupervised.get(0).get(0).length];
@@ -45,23 +49,23 @@ public class CodebookNumeric extends Codebook {
                     return;
                 }
                 
-                if (generationMethod.equals("kmeans")) {
-                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,false,false);
+                if (config.generationMethod==cbgenmethod.kmeans) {
+                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,false,config.randomSeed,false);
                 }
-                else if (generationMethod.equals("kmeans++")) {
-                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,true,false);
+                else if (config.generationMethod==cbgenmethod.kmeanspp) {
+                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,true,config.randomSeed,false);
                 }
-                else if (generationMethod.equals("kmeansnorm")) {
-                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,false,true);
+                else if (config.generationMethod==cbgenmethod.kmeansnorm) {
+                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,false,config.randomSeed,true);
                 }
-                else if (generationMethod.equals("kmeans++norm")) {
-                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,true,true);
+                else if (config.generationMethod==cbgenmethod.kmeansppnorm) {
+                    centroidsClass = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,true,config.randomSeed,true);
                 }
-                else if (generationMethod.equals("random")) {
-                    centroidsClass = randomSampling(train.trainingDataSupervised.get(c),numClustersPerClass);
+                else if (config.generationMethod==cbgenmethod.random) {
+                    centroidsClass = randomSampling(train.trainingDataSupervised.get(c),numClustersPerClass,config.randomSeed);
                 }
-                else if (generationMethod.equals("random++")) {
-                    centroidsClass = randomSamplingPlusPlus(train.trainingDataSupervised.get(c),numClustersPerClass);
+                else if (config.generationMethod==cbgenmethod.randompp) {
+                    centroidsClass = randomSamplingPlusPlus(train.trainingDataSupervised.get(c),numClustersPerClass,config.randomSeed);
                 }
                 else {
                     System.err.println("Error: Codebook generation method unknown.");
@@ -76,39 +80,79 @@ public class CodebookNumeric extends Codebook {
             }
         }
         else {
-            if (train.trainingData.size() < sizeCodebook) {
+            if (train.trainingData.size() < config.sizeCodebookInitial) {
                 System.err.println("Error in CodebookNumeric.generateCodebook(...): sizeCodebook is larger than number of training data.");
                 return;
             }
             
             /* Codebook generation */
-            if (generationMethod.equals("kmeans")) {
-                codewords = kMeans(train.trainingData,sizeCodebook,false,false);
+            if (config.generationMethod==cbgenmethod.kmeans) {
+                codewords = kMeans(train.trainingData,config.sizeCodebookInitial,false,config.randomSeed,false);
             }
-            else if (generationMethod.equals("kmeans++")) {
-                codewords = kMeans(train.trainingData,sizeCodebook,true,false);
+            else if (config.generationMethod==cbgenmethod.kmeanspp) {
+                codewords = kMeans(train.trainingData,config.sizeCodebookInitial,true,config.randomSeed,false);
             }
-            else if (generationMethod.equals("kmeansnorm")) {
-                codewords = kMeans(train.trainingData,sizeCodebook,false,true);
+            else if (config.generationMethod==cbgenmethod.kmeansnorm) {
+                codewords = kMeans(train.trainingData,config.sizeCodebookInitial,false,config.randomSeed,true);
             }
-            else if (generationMethod.equals("kmeans++norm")) {
-                codewords = kMeans(train.trainingData,sizeCodebook,true,true);
+            else if (config.generationMethod==cbgenmethod.kmeansppnorm) {
+                codewords = kMeans(train.trainingData,config.sizeCodebookInitial,true,config.randomSeed,true);
             }
-            else if (generationMethod.equals("random")) {
-                codewords = randomSampling(train.trainingData,sizeCodebook);
+            else if (config.generationMethod==cbgenmethod.random) {
+                codewords = randomSampling(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
             }
-            else if (generationMethod.equals("random++"))
-                codewords = randomSamplingPlusPlus(train.trainingData,sizeCodebook);
+            else if (config.generationMethod==cbgenmethod.randompp) {
+                codewords = randomSamplingPlusPlus(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
+            }
             else {
                 System.err.println("Error: Codebook generation method unknown.");
             }
         }
+        
+        /* Reduce the size of the codebook and increase the robustness by removing similar codewords */
+        if (config.bReduceCodebook) {
+            boolean[] bRemove = new boolean[codewords.length];
+            for (int k=0; k < bRemove.length; k++) {
+                bRemove[k] = false;
+            }
+            
+            int countRemoves = 0;
+            for (int k1=0; k1 < codewords.length-1; k1++) {
+                List<Integer> indexesMerge = new ArrayList<Integer>();
+                for (int k2=k1+1; k2 < codewords.length; k2++) {
+                    if (!bRemove[k2]) {
+                        if (computePCC(codewords[k1],codewords[k2]) > config.thReduceCodebook) {
+                        //if (computeCCC(codewords[k1],codewords[k2]) > thReduceCodebook) {
+                        //if (computeEucDist(codewords[k1],codewords[k2]) < thReduceCodebook) {
+                            indexesMerge.add(k2);
+                            bRemove[k2] = true;
+                            countRemoves++;
+                        }
+                    }
+                }
+                for (int m=0; m < codewords[k1].length; m++) {
+                    for (int k2 : indexesMerge) {
+                        codewords[k1][m] += codewords[k2][m];
+                    }
+                    codewords[k1][m] /= (indexesMerge.size() + 1);
+                }
+            }
+            
+            float[][] codewordsReduced = new float[codewords.length-countRemoves][codewords[0].length];
+            int c=0;
+            for (int k=0; k < codewords.length; k++) {
+                if (!bRemove[k]) {
+                    codewordsReduced[c++] = codewords[k];
+                }
+            }
+            codewords = codewordsReduced;
+        }
     }
     
     
-    private float[][] randomSampling(List<float[]> trainingData, int sizeCodebook) {
+    private float[][] randomSampling(List<float[]> trainingData, int sizeCodebook, int randomSeed) {
         float[][] centroids     = new float[sizeCodebook][trainingData.get(0).length];
-        Random    randGenerator = new Random(10);  /* Seed 10 to keep it consistent with simpleKMeans in Weka */
+        Random    randGenerator = new Random(randomSeed);  /* Seed 10 to keep it consistent with simpleKMeans in Weka */
         
         /* Copy training data */
         List<float[]> initData = new ArrayList<float[]>();
@@ -173,29 +217,28 @@ public class CodebookNumeric extends Codebook {
     }
     
     
-    private float[][] randomSamplingPlusPlus(List<float[]> trainingData, int sizeCodebook) {
+    private float[][] randomSamplingPlusPlus(List<float[]> trainingData, int sizeCodebook, int randomSeed) {
         /* kMeans++ initialization */
         int       numFeatures   = trainingData.get(0).length;
         float[][] centroids     = new float[sizeCodebook][trainingData.get(0).length];
-        Random    randGenerator = new Random(10);  /* Seed 10 to keep it consistent with kMeans in Weka */
+        Random    randGenerator = new Random(randomSeed);  /* Seed 10 to keep it consistent with kMeans in Weka */
         
         /* Choose one instance to be the center */
         int center0 = randGenerator.nextInt(trainingData.size());
         for (int m=0; m < trainingData.get(0).length; m++) {
-            centroids[0][m] = trainingData.get(center0)[m];
+            centroids[0][m] = (float) trainingData.get(center0)[m];
         }
         
         double[] distances      = new double[trainingData.size()];
+        double[] probs          = new double[trainingData.size()];
         double[] cumulatedProbs = new double[trainingData.size()];
         
-        float diff = 0;
-        float[] features = null;
+        double diff = 0;
         
         for (int i=0; i < trainingData.size(); i++) {
             distances[i] = 0;
-            features = trainingData.get(i);
             for (int m=0; m < numFeatures; m++) {
-                diff = centroids[0][m] - features[m];
+                diff = centroids[0][m] - trainingData.get(i)[m];
                 distances[i] += diff * diff;
             }
         }
@@ -203,9 +246,7 @@ public class CodebookNumeric extends Codebook {
         /* Select the centers of the remaining clusters */
         for (int k = 1; k < sizeCodebook; k++) {
             /* Convert distances to probabilities */
-            double[] probs = new double[trainingData.size()];
-            System.arraycopy(distances, 0, probs, 0, distances.length);
-            probs = normalizeVector(probs);
+            probs = getProbVector(probs,distances);  /* Note: This is the fastest way */
             
             double sumProbs = 0;
             for (int c = 0; c < trainingData.size(); c++) {
@@ -224,18 +265,16 @@ public class CodebookNumeric extends Codebook {
                 x++;
             }
             
-            features = trainingData.get(x);
             for (int m=0; m < numFeatures; m++) {
-                centroids[k][m] = features[m];
+                centroids[k][m] = (float) trainingData.get(x)[m];
             }
             
-            /* If an instance is now closer to another cluster center, this is the determining cluster */
+            /* If an instance is now closer to the new centroid, this is the determining one */
             for (int c = 0; c < trainingData.size(); c++) {
                 if (distances[c] > 0) {
                     double newDistance = 0;
-                    features = trainingData.get(c);
                     for (int m=0; m < numFeatures; m++) {
-                        diff = centroids[k][m] - features[m];
+                        diff = centroids[k][m] - trainingData.get(c)[m];
                         newDistance += diff * diff;
                     }
                     if (newDistance < distances[c]) {
@@ -249,7 +288,7 @@ public class CodebookNumeric extends Codebook {
     }
     
     
-    private float[][] kMeans(List<float[]> trainingData, int sizeCodebook, boolean bPlusPlus, boolean bNormalize) {
+    private float[][] kMeans(List<float[]> trainingData, int sizeCodebook, boolean bPlusPlus, int randomSeed, boolean bNormalize) {
         /* Lloyd algorithm */
         final int maxIterations = 500;  /* as in Weka */
         float[][] centroids     = null;
@@ -261,10 +300,10 @@ public class CodebookNumeric extends Codebook {
         
         /* Initialization */
         if  (bPlusPlus) {
-            centroids = randomSamplingPlusPlus(trainingData, sizeCodebook);
+            centroids = randomSamplingPlusPlus(trainingData, sizeCodebook, randomSeed);
         }
         else {
-            centroids = randomSampling(trainingData, sizeCodebook);
+            centroids = randomSampling(trainingData, sizeCodebook, randomSeed);
         }
         
         /* Compute parameters for normalization (only used locally for clustering, not for assignment) */
@@ -348,9 +387,8 @@ public class CodebookNumeric extends Codebook {
     }
     
     
-    private double[] normalizeVector(double[] vector) {
-        double   sum = 0;
-        double[] vectorNorm = new double[vector.length];
+    private double[] getProbVector(double[] vectorProb, double[] vector) {
+        double   sum        = 0;
         
         for (double v : vector) {
             sum += v;
@@ -358,12 +396,72 @@ public class CodebookNumeric extends Codebook {
         
         if (sum > 0) {
             for (int i=0; i < vector.length; i++) {
-                vectorNorm[i] = vector[i] / sum;
+                vectorProb[i] = vector[i] / sum;
             }
         }
         
-        return vectorNorm;
+        return vectorProb;
     }
+    
+    
+    private float computePCC(float[] vector1, float[] vector2) {
+        assert(vector1.length==vector2.length);
+        
+        float mean1=0.0f, mean2=0.0f;
+        for (int m=0; m < vector1.length; m++) {
+            mean1 += vector1[m];
+            mean2 += vector2[m];
+        }
+        mean1 /= vector1.length;
+        mean2 /= vector2.length;
+        
+        float cov=0.0f, squared1=0.0f, squared2=0.0f;
+        for (int m=0; m < vector1.length; m++) {
+            cov += (vector1[m]-mean1) * (vector2[m]-mean2);
+            squared1 += (vector1[m]-mean1) * (vector1[m]-mean1);
+            squared2 += (vector2[m]-mean2) * (vector2[m]-mean2);
+        }
+        
+        return cov / (float) (Math.sqrt(squared1) * Math.sqrt(squared2));
+    }
+    
+    
+//    private float computeCCC(float[] vector1, float[] vector2) {
+//        assert(vector1.length==vector2.length);
+//        
+//        float mean1=0.0f, mean2=0.0f;
+//        for (int m=0; m < vector1.length; m++) {
+//            mean1 += vector1[m];
+//            mean2 += vector2[m];
+//        }
+//        mean1 /= vector1.length;
+//        mean2 /= vector2.length;
+//        
+//        float cov=0.0f, var1=0.0f, var2=0.0f;
+//        for (int m=0; m < vector1.length; m++) {
+//            cov += (vector1[m]-mean1) * (vector2[m]-mean2);
+//            var1 += (vector1[m]-mean1) * (vector1[m]-mean1);
+//            var2 += (vector2[m]-mean2) * (vector2[m]-mean2);
+//        }
+//        cov /= vector1.length;
+//        var1 /= vector1.length;
+//        var2 /= vector2.length;
+//        
+//        return 2 * cov / (var1 + var2 + (mean1-mean2)*(mean1-mean2));
+//    }
+//    
+//    
+//    private float computeEucDist(float[] vector1, float[] vector2) {
+//        assert(vector1.length==vector2.length);
+//        
+//        float dist=0.0f;
+//        
+//        for (int m=0; m < vector1.length; m++) {
+//            dist += (vector1[m] - vector2[m]) * (vector1[m] - vector2[m]);
+//        }
+//        
+//        return (float) Math.sqrt(dist);
+//    }
     
     
     public int size() {

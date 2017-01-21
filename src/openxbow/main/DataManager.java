@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.main;
 
@@ -129,7 +133,7 @@ public class DataManager {
             
             while ((thisLine = br.readLine()) != null) {
                 String[] content = thisLine.split(";");
-                String   name    = content[0].replace("'", "");
+                Object   name    = content[0].replace("'", "");
                 
                 if (bWindowing) {
                     /* Check if combination of name and segment is already in the list */
@@ -228,18 +232,19 @@ public class DataManager {
                 curID = mapNameID.get(curName);
             }
             
+            /* Add all successive frames belonging to the same ID (name) to mapFrameIDs */
             int counter = 0;
             while (ind < inputData.size() && inputData.get(ind)[indexName].toString().equals(curName)) {
                 if (bIsActive.get(ind)) {
-                    mapFrameIDs.get(ind).add(curID);  /* Only one ID correspongs to each frame in case of no windowing */
+                    mapFrameIDs.get(ind).add(curID);  /* Only one ID corresponds to each frame in case of no windowing */
                     counter++;
                 }
                 ind++;
             }
             
+            /* Increment frame counter */
             if (curID < numFrames.size()) {
-                int tmp = numFrames.get(curID);
-                numFrames.set(curID,tmp++);
+                numFrames.set(curID, numFrames.get(curID) + counter);
             } else {
                 numFrames.add(counter);
             }
@@ -248,88 +253,82 @@ public class DataManager {
     
     
     private void generateMappingsWindowing() {
-        /* Hint: The specified hop size of the windows must be a multiple of the hop size of the feature vectors. 
-         * Successive frames must be in successive order in the input data.                                       */
+        /* Note: All frames belonging to the same file (name) must be listed coherently. 
+                 All frames within each file must be in the correct order (Reason: Meaningful speed-up). */
         
         List<Object[]> inputData = reader.inputData;
         int            indexName = reader.getIndexName();
         int            indexTime = reader.getIndexTime();
         
-        int numInstancesSemi = (int) Math.round(windowSize/2/getHopSizeInput()); /* number of input feature vectors in one direction from the center of each segment=window=instance */
-        int numLabels        = reader.getIndexesLabels().size();
+        List<Float> listCenters = new ArrayList<Float>();
+        List<Float> listLowerB  = new ArrayList<Float>();
+        List<Float> listUpperB  = new ArrayList<Float>();
         
-        double nextCenter = 0.0d;  /* Center of the next window */
-        int    ind        = 0;     /* Overall index of the input data */
-        int    ID         = 0;     /* Index of each segment=window=instance (starting from 0) */
-        
-        while (ind < inputData.size()) {
-            String  curName   = inputData.get(ind)[indexName].toString();
-            int     curID     = 0;
-            boolean bIndFound = false;
-            
-            /* Look for the next window center */
-            while (!bIndFound && ind < inputData.size() && curName.equals(inputData.get(ind)[indexName].toString())) {
-                if (areEqual(Double.parseDouble(inputData.get(ind)[indexTime].toString()), nextCenter)) {
-                    bIndFound = true;
-                }
-                else {
-                    ind++;
-                }
-            }
-            
-            if (bIndFound) {
-                /* Find the boundaries of the current window. Make sure that we are in the specified name space */
-                int iMin = ind - numInstancesSemi;
-                while (iMin < 0 || !inputData.get(iMin)[indexName].toString().equals(curName)) { iMin++; }
-                int iMax = ind + numInstancesSemi;
-                while (iMax >= inputData.size() || !inputData.get(iMax)[indexName].toString().equals(curName)) { iMax--; }
-                
-                /* Increment ID */
-                curID = ID++;
-                
-                /* Add the new ID (curID) to the mapFrameIDs for all frames within this window */
-                int counter = 0; 
-                if (bIsActive.get(ind)) {  /* Add only if activity is present at the center of the window */
-                    for (int iFrame=iMin; iFrame<=iMax; iFrame++) {
-                        if (bIsActive.get(iFrame)) {  /* Add only frames with activity */
-                            mapFrameIDs.get(iFrame).add(curID);
-                            counter++;
-                        }
-                    }
-                }
-                numFrames.add(counter);
-                
-                /* Add map entries to know which bag relates to which name and time stamp */
-                if (!mapNameID.containsKey(curName)) {
-                    mapNameID.put(curName, curID); /* First occurrence of name */
-                }
-                mapIDName.put(curID, curName);
-                mapIDTime.put(curID, Float.parseFloat(inputData.get(ind)[indexTime].toString()));  /* ind is the center of the window */
-                
-                if (numLabels > 0) {
-                    String[] labels = new String[numLabels];
-                    for (int m=0; m < numLabels; m++) {
-                        labels[m] = inputData.get(ind)[reader.getIndexesLabels().get(m)].toString();
-                    }
-                    mapIDLabels.put(curID, labels);
-                }
-                
-                /* Increment window */
-                nextCenter += hopSize;
-            }
-            else {
-                nextCenter = 0.0d;
+        /* Determine maximum time stamp which is taken into account */
+        float maxTime = 0.0f;
+        for (Object[] frame : inputData) {
+            if ((float)frame[indexTime] > maxTime) {
+                maxTime = (float) frame[indexTime];
             }
         }
-    }
-    
-    
-    private float getHopSizeInput() {
-        /* Note: Only a fast way to get the hop size of the input features, assuming that the hopsize is always the same and the first two frames are successive data frames */
-        float timeStamp0 = (float) reader.inputData.get(0)[reader.getIndexTime()];
-        float timeStamp1 = (float) reader.inputData.get(1)[reader.getIndexTime()];
         
-        return timeStamp1 - timeStamp0;
+        /* Generate a list of all segment centers (windows) */
+        float curCenter = 0.0f;
+        int   counter   = 0;
+        while (curCenter < maxTime + 1e-4) {  /* Constant 1e-4 is not a good solution but might work in most cases */
+            listLowerB.add(Math.max(-Float.MIN_NORMAL,          curCenter - (windowSize/2)) - Float.MIN_NORMAL);
+            listUpperB.add(Math.min(maxTime + Float.MIN_NORMAL, curCenter + (windowSize/2)) + Float.MIN_NORMAL);
+            listCenters.add(curCenter);
+            curCenter = hopSize * ++counter;
+        }
+        
+        
+        /* Go through the input data in the given order. */
+        int IDoffset = 0;  /* Index of each segment=window=instance (starting from 0) */
+        
+        int    ind      = 0;  /* Overall index of the input data */
+        Object curName  = "";
+        int    firstSeg = 0;  /* Meaningful speed-up */
+        
+        while (ind < inputData.size()) {
+            if (!curName.equals(inputData.get(ind)[indexName])) {
+                /* New file (name) in input -> add new IDs (one for each window center) */
+                curName  = inputData.get(ind)[indexName];
+                firstSeg = 0;  /* Meaningful speed-up */
+                IDoffset = mapIDName.size();
+                for (int iSeg=0; iSeg < listCenters.size(); iSeg++) {
+                    int curID = IDoffset + iSeg;
+                    if (!mapNameID.containsKey(curName)) {
+                        mapNameID.put(curName.toString(), curID); /* Only the first occurrence of name - to speed up readLabelsFile() */
+                    }
+                    mapIDName.put(curID, curName.toString());
+                    mapIDTime.put(curID, listCenters.get(iSeg));
+                    numFrames.add(curID, 0);
+                }
+            }
+            
+            if (bIsActive.get(ind)) {  /* Add only frames with activity */
+                float curTime = (float)inputData.get(ind)[indexTime];
+                List <Integer> mapFrameIDsInd = mapFrameIDs.get(ind);
+                
+                int curID = IDoffset;
+                for (int iSeg=firstSeg; iSeg < listLowerB.size(); iSeg++) {  /* Meaningful speed-up */
+                    curID = IDoffset + iSeg;
+                    if (listLowerB.get(iSeg) <= curTime && listUpperB.get(iSeg) >= curTime) {
+                        mapFrameIDsInd.add(curID);
+                        numFrames.set(curID, numFrames.get(curID) + 1);
+                    }
+                    else if (listLowerB.get(iSeg) > curTime) {  /* Meaningful speed-up */
+                        break;
+                    }
+                    else if (listUpperB.get(iSeg) < curTime) {  /* Meaningful speed-up */
+                        firstSeg = iSeg;
+                    }
+                }
+            }
+            
+            ind++;
+        }
     }
     
     

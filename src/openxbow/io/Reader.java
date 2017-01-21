@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.io;
 
@@ -120,7 +124,7 @@ public class Reader {
                         String[] dataLine = thisLine.split(separator);
                         
                         if (bFirstLine) {
-                            /* If no semicolon has been found, the separator must be comma */
+                            /* If no semicolon has been found, the separator must be comma */ // TODO: Handle case that a string attribute includes a separator 
                             if (dataLine.length==1) {
                                 separator = altSeparator;
                                 dataLine = thisLine.split(separator);
@@ -169,11 +173,11 @@ public class Reader {
             }
         }
         
-        indexesAttributeClass = attributes.getIndexesAttributeClass();
-        
         if (fileType==ftype.CSV && !attributes.areAttributesSpecified()) {
             attributes.updateTextFeatures(inputData.get(0));  /* Check if there are text features (is not yet clear for CSV files) */
         }
+        
+        indexesAttributeClass = attributes.getIndexesAttributeClass();
         
         return true;
     }
@@ -187,9 +191,13 @@ public class Reader {
         int iF = 0;
         for (int iA=0; iA < numAttributes; iA++) {
             String entry = dataLine[iF++];
+            boolean isString = false;
             try {
                 objData[iA] = Float.parseFloat(entry);
             } catch(NumberFormatException e) { /* String */
+                isString = true;
+            }
+            if (isString || iA==0) {  /* First attribute (name) is always interpreted as a string object. */
                 String data = entry;
                 if (data.startsWith("'") || data.startsWith("\"")) { /* If string is not beginning with ' or ": There mustn't be a comma in the string attribute */
                     String delimiter = data.substring(0,1);

@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.main;
 
@@ -28,41 +32,23 @@ public class HyperBag {
     private DataManager   DM        = null;
     private Reader        reader    = null;
     private HyperCodebook hyperBook = null;
+    private Options       options   = null;
     private List<Bag>     subBags   = null;
     private Bag           bag       = null;
     
-    /* Options SVQ */
-    private int           splitVQ   = 0;
-    
-    /* Options relevant for Bag-of-Words */
-    private String        stopCharacters;
-    private int           nGram;
-    private int           nCharGram;
-    
-    private List<Object[]> listsBof = null;
+    private List<Object[]> listAssignments = null;
     
     
-    public HyperBag (DataManager DM, HyperCodebook hyperBook) {
+    public HyperBag (DataManager DM, HyperCodebook hyperBook, Options options) {
         this.DM        = DM;
         this.reader    = DM.reader;
         this.hyperBook = hyperBook;
-    }
-    
-    public HyperBag (DataManager DM, HyperCodebook hyperBook, int splitVQ) {
-        this(DM,hyperBook);
-        this.splitVQ = splitVQ;
-    }
-    
-    public HyperBag (DataManager DM, HyperCodebook hyperBook, String stopCharacters, int nGram, int nCharGram) {
-        this(DM,hyperBook);
-        this.stopCharacters = stopCharacters;
-        this.nGram          = nGram;
-        this.nCharGram      = nCharGram;
+        this.options   = options;
     }
     
     
-    public void generateSubBagsSVQ(boolean bGaussianEncoding, float gaussianStdDev) {
-        if (splitVQ == 0) {
+    public void generateSubBagsSVQ() {
+        if (!options.bSVQ) {
             System.err.println("Error in generateSubBagsSVQ: Not applicable as SVQ is not chosen.");
             return;
         }
@@ -72,34 +58,29 @@ public class HyperBag {
         List<Codebook> codebooks = hyperBook.getCodebooks();
         
         int numFeaturesCodebook = 0;
-        if (Math.floorMod(reader.getNumFeatures(), splitVQ) > 0) {
-            numFeaturesCodebook = (reader.getNumFeatures() / splitVQ) + 1;
+        if (Math.floorMod(reader.getNumFeatures(), options.numSubCodebooksSVQ) > 0) {
+            numFeaturesCodebook = (reader.getNumFeatures() / options.numSubCodebooksSVQ) + 1;
         } else {
-            numFeaturesCodebook = reader.getNumFeatures() / splitVQ;
+            numFeaturesCodebook = reader.getNumFeatures() / options.numSubCodebooksSVQ;
         }
         
         subBags = new ArrayList<Bag>();
-        for (int s=0; s < splitVQ; s++) {
-            int indexMin = s*numFeaturesCodebook; 
-            int indexMax = Math.min((s+1)*numFeaturesCodebook-1, reader.getNumFeatures()-1);
+        for (int s=1; s <= options.numSubCodebooksSVQ; s++) {
+            int indexMin = (s-1)*numFeaturesCodebook; 
+            int indexMax = Math.min(s*numFeaturesCodebook-1, reader.getNumFeatures()-1);
             
             subBags.add( new Bag(selectData(reader.getIndexesAttributeClass().get(1),indexMin,indexMax), codebooks.get(s), null, null) );
-            subBags.get(s).generateBoF(numAssignments, bGaussianEncoding, gaussianStdDev);
+            subBags.get(s-1).generateBoF(numAssignments, options.bGaussianEncoding, options.gaussianStdDev, true);  /* Note: subbags have indexes 0 to numSubCodebooksSVQ-1 */
         }
         
         bofsToList();
     }
     
     
-    public void generateBag(int numAssignments, int optionNormalizeBag) {
-        generateBag(numAssignments, false, 0.0f, optionNormalizeBag);
-    }
-    
-    
-    public void generateBag(int numAssignments, boolean bGaussianEncoding, float gaussianStdDev, int optionNormalizeBag) {
-        if (splitVQ > 0) {
-            bag = new Bag(listsBof, hyperBook.getCodebookSVQ(), DM, null);  /* List of assignments */
-            bag.generateBoF(numAssignments, bGaussianEncoding, gaussianStdDev);
+    public void generateBag() {
+        if (options.bSVQ) {
+            bag = new Bag(listAssignments, hyperBook.getCodebooks().get(0), DM, null);  /* List of assignments */
+            bag.generateBoF(options.numAssignments, options.bGaussianEncoding, options.gaussianStdDev, false);
         }
         else  {
             List<Codebook> codebooks = hyperBook.getCodebooks();
@@ -110,10 +91,18 @@ public class HyperBag {
             
             for (Bag subBag : subBags) {
                 if (subBag.getCodebook() instanceof CodebookText) {
-                    subBag.generateBoW(stopCharacters, nGram, nCharGram);
+                    subBag.generateBoW();
                 } else {
-                    subBag.generateBoF(numAssignments, bGaussianEncoding, gaussianStdDev);
+                    if (!options.outputIFileName.isEmpty()) {  /* Output a file with the assigned word indexes */
+                        subBag.generateBoF(options.numAssignments, options.bGaussianEncoding, options.gaussianStdDev, true);
+                    } else {
+                        subBag.generateBoF(options.numAssignments, options.bGaussianEncoding, options.gaussianStdDev, false);
+                    }
                 }
+            }
+            
+            if (!options.outputIFileName.isEmpty()) {
+                bofsToList();
             }
             
             concatenateSubBags();
@@ -122,8 +111,8 @@ public class HyperBag {
         if (hyperBook.getLogWeighting() || hyperBook.getIDFWeighting()) {
             termWeighting(hyperBook.getLogWeighting(), hyperBook.getIDFWeighting());
         }
-        if (optionNormalizeBag > 0) {
-            normalizeBag(optionNormalizeBag);
+        if (options.normalizeBag > 0) {
+            normalizeBag(options.normalizeBag);
         }
     }
     
@@ -136,25 +125,25 @@ public class HyperBag {
         return hyperBook;
     }
     
-    public List<Object[]> getListsOfBags() {
-        return listsBof;
+    public List<Object[]> getListsOfAssignments() {
+        return listAssignments;
     }
     
     public int getNumSVQSubBags() {
-        return splitVQ;
+        return options.numSubCodebooksSVQ;
     }
     
     
-    /* For SVQ: Combine all (s) assigned indexes of each instance (id) and each frame (v) into a list for the generation of an overall codebook */
+    /* Combine all (s) assigned indexes of each instance (id) and each frame (v) into a list (e.g., for the generation of an overall codebook for SVQ) */
     private void bofsToList() {
-        listsBof = new ArrayList<Object[]>();
+        listAssignments = new ArrayList<Object[]>();
         
         for (int v=0; v < subBags.get(0).assignments.length; v++) {
-            Object[] newLine = new Object[splitVQ];
-            for (int s=0; s < splitVQ; s++) {
+            Object[] newLine = new Object[subBags.size()];
+            for (int s=0; s < subBags.size(); s++) {
                 newLine[s] = subBags.get(s).assignments[v];
             }
-            listsBof.add(newLine);
+            listAssignments.add(newLine);
         }
     }
     
@@ -210,7 +199,7 @@ public class HyperBag {
         float[] dff = null; /* document frequency factor */
         
         if (bIDFWeighting) {
-            if (hyperBook.getDocumentFrequencyFactors() != null) { /* Codebook given */
+            if (hyperBook.getDocumentFrequencyFactors() != null) { /* Codebook given - NOTE: It is decided whether or not the dffs should be learned here! */
                 dff = hyperBook.getDocumentFrequencyFactors();
             }
             else {
@@ -245,7 +234,7 @@ public class HyperBag {
         int sizeCodebook = hyperBook.getSize();
         
         if (optionNormalizeBag<1 || optionNormalizeBag>3) {
-            System.out.println("Error: Unknown normalization option!");
+            System.err.println("Error: Unknown normalization option!");
             return;
         }
         
@@ -267,7 +256,7 @@ public class HyperBag {
         }
         
         /* Normalization */
-        float normFactor = 0;
+        float normFactor = 0.0f;
         for (int id=0; id < numIDs; id++) {
             if (optionNormalizeBag==1) {
                 normFactor = DM.getNumFrames().get(id);
@@ -276,7 +265,11 @@ public class HyperBag {
             }
             
             for (int w=0; w < sizeCodebook; w++) {
-                bag.bof[id][w] = bag.bof[id][w] * sizeCodebook / normFactor;
+                if (normFactor > Float.MIN_VALUE) {
+                    bag.bof[id][w] = bag.bof[id][w] * sizeCodebook / normFactor;
+                } else {
+                    bag.bof[id][w] = 0.0f;
+                }
             }
         }
     }

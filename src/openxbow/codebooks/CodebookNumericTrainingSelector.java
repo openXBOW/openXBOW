@@ -1,18 +1,22 @@
-/*F********************************************************************************
+/*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * 
- * (c) 2016, Maximilian Schmitt, Björn Schuller: University of Passau. 
- *     All rights reserved.
- * 
- * Any form of commercial use and redistribution is prohibited, unless another
- * agreement between you and the copyright holder exists.
- * 
- * Contact: maximilian.schmitt@uni-passau.de
- * 
- * If you use openXBOW or any code from openXBOW in your research work,
- * you are kindly asked to acknowledge the use of openXBOW in your publications.
- * See the file CITING.txt for details.
- *******************************************************************************E*/
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
+ *  
+ *  This program is free software: you can redistribute it and/or modify 
+ *  it under the terms of the GNU General Public License as published by 
+ *  the Free Software Foundation, either version 3 of the License, or 
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************E*/
 
 package openxbow.codebooks;
 
@@ -34,38 +38,30 @@ public class CodebookNumericTrainingSelector {
     public List<Object[]>      inputData              = null;
     public List<float[]>       trainingData           = null;
     public List<List<float[]>> trainingDataSupervised = null;
-    List<Integer>              indexFeatures          = null;
     
-    private DataManager DM             = null;
-    private HyperBag    hyperBag       = null;  /* For creating the codebook from a Bag-of-Features (SVQ) */
-    private boolean     bSupervised    = false;
-    private int         numTraining    = 0;  /* =0: All input instances are chosen for training */
+    private List<Integer>  indexFeatures = null;
+    private DataManager    DM            = null;
+    private HyperBag       hyperBag      = null;  /* For creating the codebook from a Bag-of-Features (SVQ) */
+    private CodebookConfig config        = null;
     
     
-    public CodebookNumericTrainingSelector(DataManager DM) {
-        this(DM, false);
+    public CodebookNumericTrainingSelector(DataManager DM, CodebookConfig config) {
+        this(DM,config,1); /* 1 is the standard numeric class index */
     }
-    public CodebookNumericTrainingSelector(DataManager DM, boolean bSupervised) {
-        this(DM,bSupervised,0);
+    public CodebookNumericTrainingSelector(DataManager DM, CodebookConfig config, int featureClass) {
+        this(DM,config,DM.reader.getIndexesAttributeClass().get(featureClass));
     }
-    public CodebookNumericTrainingSelector(DataManager DM, boolean bSupervised, int numTraining) {
-        this(DM,bSupervised,1,numTraining); /* 1 is the standard numeric class index */
-    }
-    public CodebookNumericTrainingSelector(DataManager DM, boolean bSupervised, int featureClass, int numTraining) {
-        this(DM,bSupervised,DM.reader.getIndexesAttributeClass().get(featureClass),numTraining);
-    }
-    public CodebookNumericTrainingSelector(DataManager DM, boolean bSupervised, List<Integer> listIndexes, int numTraining) {
+    public CodebookNumericTrainingSelector(DataManager DM, CodebookConfig config, List<Integer> listIndexes) {
         this.inputData     = DM.reader.inputData;
         this.DM            = DM;
-        this.bSupervised   = bSupervised;
-        this.numTraining   = numTraining;
+        this.config        = config;
         this.indexFeatures = listIndexes;
         
         select();
     }
-    public CodebookNumericTrainingSelector(HyperBag hyperBag, boolean bSupervised) {  /* SVQ top-level codebook */
+    public CodebookNumericTrainingSelector(HyperBag hyperBag, CodebookConfig config) {  /* SVQ top-level codebook */
         this.hyperBag      = hyperBag;
-        this.bSupervised   = bSupervised;
+        this.config        = config;
         this.indexFeatures = new ArrayList<Integer>();
         for (int k=0; k < hyperBag.getNumSVQSubBags(); k++) {
             this.indexFeatures.add(k);
@@ -77,7 +73,7 @@ public class CodebookNumericTrainingSelector {
     
     private void select() {
         if (hyperBag==null) {
-            if (bSupervised) {
+            if (config.bSupervised) {
                 if (!isLabelNominal()) {
                     System.err.println("Error: Generating codewords per class is only available in case of one nominal label.");
                 } else {
@@ -87,14 +83,14 @@ public class CodebookNumericTrainingSelector {
                 getTrainingFeatures(inputData);
             }
         } else { /* SVQ top-level codebook */
-            if (bSupervised) {
+            if (config.bSupervised) {
                 if (!isLabelNominal()) {
                     System.err.println("Error: Generating codewords per class is only available in case of one nominal label.");
                 } else {
-                    getTrainingFeaturesSupervised(hyperBag.getListsOfBags());
+                    getTrainingFeaturesSupervised(hyperBag.getListsOfAssignments());
                 }
             } else {
-                getTrainingFeatures(hyperBag.getListsOfBags());
+                getTrainingFeatures(hyperBag.getListsOfAssignments());
             }
         }
     }
@@ -139,8 +135,8 @@ public class CodebookNumericTrainingSelector {
             }
             
             /* Choose instances for training */
-            if (numTraining > 0) {
-                int numTrainingPerClass = (int) Math.ceil((double) numTraining / (double) numClasses);
+            if (config.numTraining > 0) {
+                int numTrainingPerClass = (int) Math.ceil((double) config.numTraining / (double) numClasses);
                 
                 UniqueIndexes   uniqueIndexes   = new UniqueIndexes(classData.size(), numTrainingPerClass);
                 Vector<Integer> indexesTraining = uniqueIndexes.getIndexes();
@@ -172,8 +168,8 @@ public class CodebookNumericTrainingSelector {
         trainingData = new ArrayList<float[]>();
         
         /* Choose instances for training */
-        if (numTraining > 0) {
-            UniqueIndexes   uniqueIndexes   = new UniqueIndexes(inputData.size(), numTraining);
+        if (config.numTraining > 0) {
+            UniqueIndexes   uniqueIndexes   = new UniqueIndexes(inputData.size(), config.numTraining);
             Vector<Integer> indexesTraining = uniqueIndexes.getIndexes();
             for (int i=0; i < indexesTraining.size(); i++) {
                 float[] features = new float[indexFeatures.size()];

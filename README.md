@@ -1,5 +1,7 @@
-# openXBOW
-openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit  
+# 
+<img src="http://www.fim.uni-passau.de/fileadmin/_processed_/csm_openXBOW-logo_large_f870392f71.png" alt="openXBOW" width="600" />
+
+**openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit**  
 
 openXBOW generates a bag-of-words representation from a sequence of numeric and/or textual features, e.g., acoustic LLDs, visual features, and transcriptions of natural speech. 
 The tool provides a multitude of options, e.g., different modes of vector quantisation, codebook generation, term frequency weighting and methods known from natural language processing.  

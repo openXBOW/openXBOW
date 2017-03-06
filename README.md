@@ -1,5 +1,5 @@
 # 
-<img src="http://www.fim.uni-passau.de/fileadmin/_processed_/csm_openXBOW-logo_large_f870392f71.png" alt="openXBOW" width="600" />
+<img src="http://www.fim.uni-passau.de/fileadmin/_processed_/csm_openXBOW-text_b9c0d8db03.png" alt="openXBOW" width="600" />
 
 **openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit**  
 

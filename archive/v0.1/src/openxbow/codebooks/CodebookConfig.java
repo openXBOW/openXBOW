@@ -22,24 +22,18 @@ package openxbow.codebooks;
 
 public class CodebookConfig {
     protected enum cbtype {text,numeric};
-    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm,generic};
-        
+    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm};
+    
     protected cbtype codebookType;
     
     /* Numeric */
     protected int         sizeCodebookInitial;  /* Desired size of the codebook (can be different because of reduction, supervised, text, ...)*/ 
     protected cbgenmethod generationMethod;
-    protected float       genericOffset = 1.0f;
     protected boolean     bReduceCodebook  = false;
     protected float       thReduceCodebook = 0.0f;
     protected boolean     bSupervised = false;
     protected int         randomSeed = 10;  /* 10 is default in Weka */
     protected int         numTraining = 0;
-    
-    /* Numeric n-grams */
-    protected int maxSizeUnigram = 0;  /* 0: no unigrams */
-    protected int maxSizeBigram  = 0;  /* 0: no bigrams */
-    protected int maxSizeTrigram = 0;  /* 0: no trigrams */
     
     /* Text */
     protected int    minTermFreq = 1;
@@ -51,8 +45,7 @@ public class CodebookConfig {
     
     /* Numeric */
     public CodebookConfig(int     sizeCodebookInitial,
-                          String  strGenerationMethod,
-                          float   genericOffset,
+                          String  generationMethod,
                           boolean bReduceCodebook,
                           float   thReduceCodebook,
                           boolean bSupervised,
@@ -62,60 +55,29 @@ public class CodebookConfig {
         this.codebookType        = cbtype.numeric;
         this.sizeCodebookInitial = sizeCodebookInitial;
         
-        if (strGenerationMethod.equals("random")) {
+        if (generationMethod.equals("random")) {
             this.generationMethod = cbgenmethod.random;
-        } else if (strGenerationMethod.equals("random++")) {
+        } else if (generationMethod.equals("random++")) {
             this.generationMethod = cbgenmethod.randompp;
-        } else if (strGenerationMethod.equals("kmeans")) {
+        } else if (generationMethod.equals("kmeans")) {
             this.generationMethod = cbgenmethod.kmeans;
-        } else if (strGenerationMethod.equals("kmeans++")) {
+        } else if (generationMethod.equals("kmeans++")) {
             this.generationMethod = cbgenmethod.kmeanspp;
-        } else if (strGenerationMethod.equals("kmeansnorm")) {
+        } else if (generationMethod.equals("kmeansnorm")) {
             this.generationMethod = cbgenmethod.kmeansnorm;
-        } else if (strGenerationMethod.equals("kmeans++norm")) {
+        } else if (generationMethod.equals("kmeans++norm")) {
             this.generationMethod = cbgenmethod.kmeansppnorm;
-        } else if (strGenerationMethod.equals("generic")) {
-            this.generationMethod = cbgenmethod.generic;
         } else {
             System.err.println("Error: CodebookConfig: Codebook generation method is not valid!");
         }
         
-        this.genericOffset    = genericOffset;
-        
         this.bReduceCodebook  = bReduceCodebook;
         this.thReduceCodebook = thReduceCodebook;
         
-        this.bSupervised      = bSupervised;
-        this.randomSeed       = randomSeed;
-        this.numTraining      = numTraining;
+        this.bSupervised = bSupervised;
+        this.randomSeed  = randomSeed;
+        this.numTraining = numTraining;
     }
-    
-    public CodebookConfig(int     sizeCodebookInitial,
-                          String  strGenerationMethod,
-                          float   genericOffset,
-                          boolean bReduceCodebook,
-                          float   thReduceCodebook,
-                          boolean bSupervised,
-                          int     randomSeed,
-                          int     numTraining,
-                          int     maxSizeUnigram,
-                          int     maxSizeBigram,
-                          int     maxSizeTrigram)
-    {
-        this(sizeCodebookInitial, 
-             strGenerationMethod, 
-             genericOffset, 
-             bReduceCodebook, 
-             thReduceCodebook, 
-             bSupervised, 
-             randomSeed, 
-             numTraining);
-        
-        this.maxSizeUnigram = maxSizeUnigram;
-        this.maxSizeBigram  = maxSizeBigram;
-        this.maxSizeTrigram = maxSizeTrigram;
-    }
-    
     
     /* Text */
     public CodebookConfig(int    minTermFreq,

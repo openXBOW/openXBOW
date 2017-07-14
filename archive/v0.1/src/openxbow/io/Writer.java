@@ -42,17 +42,15 @@ public class Writer {
     private DataManager DM;
     private boolean     bWriteName;
     private boolean     bWriteTime;
-    private boolean     bNoWriteLabels;
     private boolean     bAppend;
     
-    public Writer(String fileName, DataManager DM, boolean bWriteName, boolean bWriteTimeStamp, boolean bNoWriteLabels, String arffLabels, boolean bAppend) {
-        this.fileNames      = fileName.split(",");  /* Multiple output files, separated by comma, may be given (so far, multiple labels are required in this case) */
-        this.DM             = DM;
-        this.bWriteName     = bWriteName;
-        this.bWriteTime     = bWriteTimeStamp;
-        this.bNoWriteLabels = bNoWriteLabels;
-        this.bAppend        = bAppend;
-        this.relation       = "'bag-of-features representation of " + DM.reader.getRelation().replace("'", "") + "'";
+    public Writer(String fileName, DataManager DM, boolean bWriteName, boolean bWriteTimeStamp, String arffLabels, boolean bAppend) {
+        this.fileNames  = fileName.split(",");  /* Multiple output files, separated by comma, may be given (so far, multiple labels are required in this case) */
+        this.DM         = DM;
+        this.bWriteName = bWriteName;
+        this.bWriteTime = bWriteTimeStamp;
+        this.bAppend    = bAppend;
+        this.relation   = "'bag-of-features representation of " + DM.reader.getRelation().replace("'", "") + "'";
         
         if (!arffLabels.isEmpty()) {  /* Labels string has been set manually */
             this.strLabels    = new String[1];
@@ -81,14 +79,8 @@ public class Writer {
     public boolean writeFile(HyperBag hyperBag) {
         float[][] bof = hyperBag.getBag().bof;
         
-        boolean bWriteLabels = false;
-        
-        if (!bNoWriteLabels && !DM.getMappingIDLabels().isEmpty()) {
-            bWriteLabels = true;
-            
-            if (strLabels==null) {
-                generateStrLabels();
-            }
+        if (!DM.getMappingIDLabels().isEmpty() && strLabels==null) {
+            generateStrLabels();
         }
         
         try {
@@ -124,7 +116,7 @@ public class Writer {
                             bw.write("@attribute W(" + String.valueOf(i) + ") numeric");
                             bw.newLine();
                         }
-                        if (bWriteLabels) {
+                        if (strLabels!=null) {
                             for (int m=0; m < strLabels.length; m++) {
                                 if (m==0) {
                                     bw.write("@attribute class " + strLabels[m]);
@@ -142,82 +134,76 @@ public class Writer {
                     
                     /* Features */
                     for (int i=0; i < bof.length; i++) {
-                        if (strLabels==null || DM.getMappingIDLabels().get(i) != null) {  /* In case labels are given, the bag is only written if a label exists for this bag */
-                            if (bWriteName) {
-                                bw.write("'" + DM.getMappingIDName().get(i) + "',");
-                            }
-                            if (bWriteTime) {
-                                bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ",");
-                            }
-                            for (int j=0; j < bof[0].length; j++) {
-                                bw.write(String.valueOf(bof[i][j]));
-                                if (j < bof[0].length-1) {
-                                    bw.write(",");
-                                }
-                            }
-                            if (bWriteLabels) {
-                                if (!DM.getMappingIDLabels().isEmpty()) {
-                                    for (int m=0; m < strLabels.length; m++) {
-                                        String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
-                                        bw.write(",");
-                                        bw.write(String.valueOf(curLabel));
-                                    }
-                                } else {  /* No labels given, but -arffLabels set */
-                                    bw.write(",?");
-                                }
-                            }
-                            bw.newLine();
+                        if (bWriteName) {
+                            bw.write("'" + DM.getMappingIDName().get(i) + "',");
                         }
+                        if (bWriteTime) {
+                            bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ",");
+                        }
+                        for (int j=0; j < bof[0].length; j++) {
+                            bw.write(String.valueOf(bof[i][j]));
+                            if (j < bof[0].length-1) {
+                                bw.write(",");
+                            }
+                        }
+                        if (strLabels!=null) {
+                            if (!DM.getMappingIDLabels().isEmpty()) {
+                                for (int m=0; m < strLabels.length; m++) {
+                                    String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
+                                    bw.write(",");
+                                    bw.write(String.valueOf(curLabel));
+                                }
+                            } else {  /* No labels given, but -arffLabels set */
+                                bw.write(",?");
+                            }
+                        }
+                        bw.newLine();
                     }
                 }
                 
                 else if (fileTypes[f]==ftype.CSV) {
                     for (int i=0; i < bof.length; i++) {
-                        if (strLabels==null || DM.getMappingIDLabels().get(i) != null) {  /* In case labels are given, the bag is only written if a label exists for this bag */
-                            if (bWriteName) {
-                                bw.write("'" + DM.getMappingIDName().get(i) + "';");
-                            }
-                            if (bWriteTime) {
-                                bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ";");
-                            }
-                            for (int j=0; j < bof[0].length; j++) {
-                                bw.write(String.valueOf(bof[i][j]));
-                                if (j < bof[0].length-1) {
-                                    bw.write(";");
-                                }
-                            }
-                            if (bWriteLabels) {
-                                if (fileNames.length > 1) {
-                                    bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[f])); /* If several output files are given, write only one label*/
-                                } else {
-                                    for (int m=0; m < strLabels.length; m++) {
-                                        bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[m]));
-                                    }
-                                }
-                            }
-                            bw.newLine();
+                        if (bWriteName) {
+                            bw.write("'" + DM.getMappingIDName().get(i) + "';");
                         }
+                        if (bWriteTime) {
+                            bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ";");
+                        }
+                        for (int j=0; j < bof[0].length; j++) {
+                            bw.write(String.valueOf(bof[i][j]));
+                            if (j < bof[0].length-1) {
+                                bw.write(";");
+                            }
+                        }
+                        if (strLabels!=null) {
+                            if (fileNames.length > 1) {
+                                bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[f])); /* If several output files are given, write only one label*/
+                            } else {
+                                for (int m=0; m < strLabels.length; m++) {
+                                    bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[m]));
+                                }   
+                            }
+                        }
+                        bw.newLine();
                     }
                 }
                 
                 else if (fileTypes[f]==ftype.LIBSVM) {
                     for (int i=0; i < bof.length; i++) {
-                        if (strLabels==null || DM.getMappingIDLabels().get(i) != null) {  /* In case labels are given, the bag is only written if a label exists for this bag */
-                            if (bWriteLabels) {
-                                String curLabel = editLabel(DM.getMappingIDLabels().get(i)[f]);  /* Multi-label is currently not supported in libSVM, thus several output files (separator ,) should be given. */
-                                bw.write(String.valueOf(curLabel));
-                            } else {
-                                bw.write("0");
-                            }
-                            bw.write(" ");
-                            for (int j=0; j < bof[0].length; j++) {
-                                if (bof[i][j] > Float.MIN_NORMAL || bof[i][j] < -Float.MIN_NORMAL) {
-                                    bw.write(String.valueOf(j+1) + ":" + String.valueOf(bof[i][j]));
-                                    bw.write(" ");
-                                }
-                            }
-                            bw.newLine();
+                        if (strLabels!=null) {
+                            String curLabel = editLabel(DM.getMappingIDLabels().get(i)[f]);  /* Multi-label is currently not supported in libSVM, thus several output files (separator ,) should be given. */
+                            bw.write(String.valueOf(curLabel));
+                        } else {
+                            bw.write("0");
                         }
+                        bw.write(" ");
+                        for (int j=0; j < bof[0].length; j++) {
+                            if (bof[i][j] > Float.MIN_NORMAL || bof[i][j] < -Float.MIN_NORMAL) {
+                                bw.write(String.valueOf(j+1) + ":" + String.valueOf(bof[i][j]));
+                                bw.write(" ");
+                            }
+                        }
+                        bw.newLine();
                     }
                 }
                 
@@ -239,11 +225,9 @@ public class Writer {
             if (bNominalLabels[m]) {
                 Vector<String> vecLabels = new Vector<String>();
                 for (int i=0; i < DM.getMappingIDLabels().size(); i++) {
-                    if (DM.getMappingIDLabels().get(i) != null) {
-                        String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
-                        if (!vecLabels.contains(curLabel)) {
-                            vecLabels.add(curLabel);
-                        }
+                    String curLabel = editLabel(DM.getMappingIDLabels().get(i)[m]);
+                    if (!vecLabels.contains(curLabel)) {
+                        vecLabels.add(curLabel);
                     }
                 }
                 
@@ -296,7 +280,7 @@ public class Writer {
         for (int l=0; l < DM.getMappingIDLabels().get(0).length; l++) {
             bLabelsNominal[l] = true;
             for (int id=0; id < DM.getMappingIDLabels().size(); id++) {
-                if (DM.getMappingIDLabels().get(id) != null && !isNominal(DM.getMappingIDLabels().get(id)[l])) {
+                if (!isNominal(DM.getMappingIDLabels().get(id)[l])) {
                     bLabelsNominal[l] = false;  /* If there is at least one non-nominal label */
                     break;
                 }

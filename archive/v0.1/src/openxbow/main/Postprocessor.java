@@ -110,9 +110,6 @@ public class Postprocessor {
         for (int w=0; w < std.length; w++) {
             std[w] = std[w] / (counter - 1);
             std[w] = (float) Math.sqrt(std[w]);
-            if (std[w] < Float.MIN_NORMAL) {
-                std[w] = 1.0f;
-            }
         }
         
         return std;
@@ -123,9 +120,7 @@ public class Postprocessor {
         
         for (int id=0; id < bof.length; id++) {
             for (int w=0; w < bof[0].length; w++) {
-                if (std[w] > Float.MIN_VALUE) {
-                    bof[id][w] = (bof[id][w] - mean[w]) / std[w];
-                }
+                bof[id][w] = (bof[id][w] - mean[w]) / std[w];
             }
         }
     }
@@ -155,7 +150,8 @@ public class Postprocessor {
         for (int w=0; w < MIN.length; w++) {
             WIDTH[w] = MAX[w] - MIN[w];
             if (WIDTH[w] < Float.MIN_NORMAL) {
-                WIDTH[w] = 1.0f;
+                WIDTH[w] = 1;
+                System.err.println("Warning: Term-frequency for audio word " + String.valueOf(w) + " seems to be constant.");
             }
         }
         
@@ -172,9 +168,7 @@ public class Postprocessor {
         
         for (int id=0; id < bof.length; id++) {
             for (int w=0; w < bof[0].length; w++) {
-                if (WIDTH[w] > Float.MIN_VALUE) {
-                    bof[id][w] = (bof[id][w] - MIN[w]) / WIDTH[w];
-                }
+                bof[id][w] = (bof[id][w] - MIN[w]) / WIDTH[w];
             }
         }
     }

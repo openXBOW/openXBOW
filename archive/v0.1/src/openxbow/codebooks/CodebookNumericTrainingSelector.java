@@ -27,12 +27,13 @@ import java.util.Map;
 import java.util.Vector;
 
 import openxbow.main.DataManager;
+import openxbow.main.HyperBag;
 import openxbow.randomselection.UniqueIndexes;
 
 
 public class CodebookNumericTrainingSelector {
-    /* This class chooses the instances used for training of a numeric codebook                               */
-    /* Different constructors are available (supervised codebook generation, etc.), depending on the use-case */
+    /* This class chooses the instances used for training of a numeric codebook                                    */
+    /* Different constructors are available (supervised codebook generation, SVQ, etc.), depending on the use-case */
     
     public List<Object[]>      inputData              = null;
     public List<float[]>       trainingData           = null;
@@ -40,6 +41,7 @@ public class CodebookNumericTrainingSelector {
     
     private List<Integer>  indexFeatures = null;
     private DataManager    DM            = null;
+    private HyperBag       hyperBag      = null;  /* For creating the codebook from a Bag-of-Features (SVQ) */
     private CodebookConfig config        = null;
     
     
@@ -57,17 +59,39 @@ public class CodebookNumericTrainingSelector {
         
         select();
     }
+    public CodebookNumericTrainingSelector(HyperBag hyperBag, CodebookConfig config) {  /* SVQ top-level codebook */
+        this.hyperBag      = hyperBag;
+        this.config        = config;
+        this.indexFeatures = new ArrayList<Integer>();
+        for (int k=0; k < hyperBag.getNumSVQSubBags(); k++) {
+            this.indexFeatures.add(k);
+        }
+        
+        select();
+    }
     
     
     private void select() {
-        if (config.bSupervised) {
-            if (!isLabelNominal()) {
-                System.err.println("Error: Generating codewords per class is only available in case of one nominal label.");
+        if (hyperBag==null) {
+            if (config.bSupervised) {
+                if (!isLabelNominal()) {
+                    System.err.println("Error: Generating codewords per class is only available in case of one nominal label.");
+                } else {
+                    getTrainingFeaturesSupervised(inputData);
+                }
             } else {
-                getTrainingFeaturesSupervised(inputData);
+                getTrainingFeatures(inputData);
             }
-        } else {
-            getTrainingFeatures(inputData);
+        } else { /* SVQ top-level codebook */
+            if (config.bSupervised) {
+                if (!isLabelNominal()) {
+                    System.err.println("Error: Generating codewords per class is only available in case of one nominal label.");
+                } else {
+                    getTrainingFeaturesSupervised(hyperBag.getListsOfAssignments());
+                }
+            } else {
+                getTrainingFeatures(hyperBag.getListsOfAssignments());
+            }
         }
     }
     

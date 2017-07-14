@@ -114,17 +114,14 @@ public class DataManager {
         mapIDLabels.clear();
         
         try {
-            String   thisLine = null;
-            String[] content  = null;
-            Object   name     = null;
-            Object   ret      = null; 
-            
+            String thisLine;
             File   inputFile = new File(labelsFileName);
                    br        = new BufferedReader(new FileReader(inputFile));
             
+            /* Skip (and check) header line (must always appear in label file) */
+            int numLabels = 0;
             thisLine = br.readLine();
             
-            int numLabels = 0;
             if (thisLine==null || (bWindowing && thisLine.split(";").length < 3) || (!bWindowing && thisLine.split(";").length < 2)) {
                 System.err.println("Error: Labels file " + labelsFileName + " does not have the required format");
                 return false;
@@ -134,38 +131,37 @@ public class DataManager {
                 numLabels = thisLine.split(";").length-1;
             }
             
-            /* Check if there is a header line */
-            content = thisLine.split(";");
-            name    = content[0].replace("'", "");
-            if (mapNameID.get(name)==null) {  /* Header line is present */
-                thisLine = br.readLine();
-            }
-            
-            while (thisLine != null) {
-                content = thisLine.split(";");
-                name    = content[0].replace("'", "");
+            while ((thisLine = br.readLine()) != null) {
+                String[] content = thisLine.split(";");
+                Object   name    = content[0].replace("'", "");
                 
                 if (bWindowing) {
                     /* Check if combination of name and segment is already in the list */
                     int counter = 0;
                     
-                    ret = mapNameID.get(name);  /* Get first id of the correct file (name) */
-                    if (ret!=null) {
+                    Object ret = mapNameID.get(name);  /* Get first id of the correct file (name) */
+                    if (ret==null) {
+                        System.err.println("Warning: Instance " + content[0] + " " + content[1] + " in labels file not found in the input data.");
+                    } else {
                         counter = (int) ret;
-                        
-                        /* Search for the correct time stamp within file */
-                        double dLabel = Double.parseDouble(content[1]);
-                        int    id     = -1;
-                        while (counter < mapIDName.size() && mapIDName.get(counter).equals(name)) {  /* NOTE: Can be improved if we know the number of IDs in one file */
-                            if (areEqual(dLabel, mapIDTime.get(counter))) {
-                                id = counter;
-                                break;
-                            }
-                            counter++;
+                    }
+                    
+                    /* Search for the correct time stamp within file */
+                    double dLabel = Double.parseDouble(content[1]);
+                    int    id     = -1;
+                    while (counter < mapIDName.size() && mapIDName.get(counter).equals(name)) {  /* NOTE: Can be improved if we know the number of IDs in one file */
+                        if (areEqual(dLabel, mapIDTime.get(counter))) {
+                            id = counter;
+                            break;
                         }
-                        
-                        /* Add label for the correct id */
-                        if (id >= 0) {
+                        counter++;
+                    }
+                    
+                    /* Add label for the correct id */
+                    if (id < 0) {
+                        System.err.println("Warning: Instance " + content[0] + " " + content[1] + " in labels file not found in the input data.");
+                    } else {
+                        if (!mapIDLabels.containsKey(id)) {
                             String[] labels = new String[numLabels];
                             for (int m=0; m < numLabels; m++) {
                                 labels[m] = content[m+2];
@@ -175,8 +171,10 @@ public class DataManager {
                     }
                 }
                 else {
-                    ret = mapNameID.get(name);
-                    if (ret!=null) {
+                    Object ret = mapNameID.get(name);
+                    if (ret==null) {
+                        System.err.println("Error: Instance " + content[0] + " in labels file not found in the input data.");
+                    } else {
                         String[] labels = new String[numLabels];
                         for (int m=0; m < numLabels; m++) {
                             labels[m] = content[m+1];
@@ -184,8 +182,6 @@ public class DataManager {
                         mapIDLabels.put((int)ret, labels);
                     }
                 }
-                
-                thisLine = br.readLine();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -268,6 +264,24 @@ public class DataManager {
         List<Float> listLowerB  = new ArrayList<Float>();
         List<Float> listUpperB  = new ArrayList<Float>();
         
+        /* Determine maximum time stamp which is taken into account */
+        float maxTime = 0.0f;
+        for (Object[] frame : inputData) {
+            if ((float)frame[indexTime] > maxTime) {
+                maxTime = (float) frame[indexTime];
+            }
+        }
+        
+        /* Generate a list of all segment centers (windows) */
+        float curCenter = 0.0f;
+        int   counter   = 0;
+        while (curCenter < maxTime + 1e-4) {  /* Constant 1e-4 is not a good solution but might work in most cases */
+            listLowerB.add(Math.max(-Float.MIN_NORMAL,          curCenter - (windowSize/2)) - Float.MIN_NORMAL);
+            listUpperB.add(Math.min(maxTime + Float.MIN_NORMAL, curCenter + (windowSize/2)) + Float.MIN_NORMAL);
+            listCenters.add(curCenter);
+            curCenter = hopSize * ++counter;
+        }
+        
         
         /* Go through the input data in the given order. */
         int IDoffset = 0;  /* Index of each segment=window=instance (starting from 0) */
@@ -279,17 +293,13 @@ public class DataManager {
         while (ind < inputData.size()) {
             if (!curName.equals(inputData.get(ind)[indexName])) {
                 /* New file (name) in input -> add new IDs (one for each window center) */
-                curName = inputData.get(ind)[indexName];
-                
-                /* Update list of block boundaries */
-                updateListOfBlocks(reader, curName, ind, listCenters, listLowerB, listUpperB);
-                
+                curName  = inputData.get(ind)[indexName];
                 firstSeg = 0;  /* Meaningful speed-up */
                 IDoffset = mapIDName.size();
                 for (int iSeg=0; iSeg < listCenters.size(); iSeg++) {
                     int curID = IDoffset + iSeg;
                     if (!mapNameID.containsKey(curName)) {
-                        mapNameID.put(curName.toString(), curID);  /* Only the first occurrence of name - to speed up readLabelsFile() */
+                        mapNameID.put(curName.toString(), curID); /* Only the first occurrence of name - to speed up readLabelsFile() */
                     }
                     mapIDName.put(curID, curName.toString());
                     mapIDTime.put(curID, listCenters.get(iSeg));
@@ -318,37 +328,6 @@ public class DataManager {
             }
             
             ind++;
-        }
-    }
-    
-    
-    private void updateListOfBlocks(Reader reader, Object curName, int startIndex, List<Float> listCenters, List<Float> listLowerB, List<Float> listUpperB) {
-        listCenters.clear(); 
-        listLowerB.clear();
-        listUpperB.clear();
-        
-        List<Object[]> inputData = reader.inputData;
-        int            indexName = reader.getIndexName();
-        int            indexTime = reader.getIndexTime();
-        
-        /* Determine maximum time stamp which is taken into account */
-        int   ind     = startIndex;
-        float maxTime = 0.0f;
-        while (ind < inputData.size() && curName.equals(inputData.get(ind)[indexName])) {
-            if ((float)inputData.get(ind)[indexTime] > maxTime) {
-                maxTime = (float)inputData.get(ind)[indexTime];
-            }
-            ind++;
-        }
-        
-        /* Generate a list of all segment centers (windows) */
-        float curCenter = 0.0f;
-        int   counter   = 0;
-        while (curCenter < maxTime + 1e-4) {  /* Constant 1e-4 is not a good solution but might work in most cases */
-            listLowerB.add(Math.max(-Float.MIN_NORMAL,          curCenter - (windowSize/2)) - Float.MIN_NORMAL);
-            listUpperB.add(Math.min(maxTime + Float.MIN_NORMAL, curCenter + (windowSize/2)) + Float.MIN_NORMAL);
-            listCenters.add(curCenter);
-            curCenter = hopSize * ++counter;
         }
     }
     

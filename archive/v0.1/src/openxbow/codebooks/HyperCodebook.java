@@ -33,15 +33,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import openxbow.main.DataManager;
+import openxbow.main.HyperBag;
 import openxbow.main.Options;
-
 
 public class HyperCodebook {
     private DataManager DM      = null;
     private Options     options = null;
     
-    private Map<Codebook,Integer> indexBook = null;  /* Feature index for each codebook */
     private List<Codebook>        codebooks = null;
+    private Map<Codebook,Integer> indexBook = null;  /* Feature index for each codebook, only if no SVQ is used */
     
     /* Preprocessing */
     private float[] fMeans        = null;
@@ -50,7 +50,7 @@ public class HyperCodebook {
     private float[] fWIDTH        = null;
     
     /* Term frequency weighting parameters */
-    private float[] dff = null;
+    private float[] dff           = null;
     
     /* Postprocessing */
     private float[] fMeansOutput        = null;
@@ -66,18 +66,27 @@ public class HyperCodebook {
         indexBook = new HashMap<Codebook,Integer>();
         codebooks = new ArrayList<Codebook>();
         
-        for (Entry<Integer,List<Integer>> e : DM.reader.getIndexesAttributeClass().entrySet()) {
-            if (e.getKey()==0) {  /* At the moment, the index in Attributes (0 OR 1-9) decides whether a feature is textual or numeric */
-                codebooks.add(new CodebookText(options.cbConfig.get(e.getKey())));
-            } else {
-                codebooks.add(new CodebookNumeric(options.cbConfig.get(e.getKey())));
+        if (options.bSVQ) {
+            codebooks.add(new CodebookNumeric(options.cbConfig.get(0)));  /* Top-level codebook (index 0) */
+            for (int s=1; s <= options.numSubCodebooksSVQ; s++) {
+                codebooks.add(new CodebookNumeric(options.cbConfig.get(s)));  /* All features are numeric for SVQ */
             }
-            indexBook.put(codebooks.get(codebooks.size()-1), e.getKey());  /* Later on, we must know to which feature class the codebooks correspond to */
+        }
+        else {
+            for (Entry<Integer,List<Integer>> e : DM.reader.getIndexesAttributeClass().entrySet()) {
+                if (e.getKey()==0) {  /* So far, the index in Attributes (0 OR 1-9) decides whether a feature is textual or numeric */
+                    codebooks.add(new CodebookText(options.cbConfig.get(e.getKey())));
+                } else {
+                    codebooks.add(new CodebookNumeric(options.cbConfig.get(e.getKey())));
+                }
+                indexBook.put(codebooks.get(codebooks.size()-1), e.getKey());  /* Later on, we must know to which feature class the codebooks correspond to */
+            }
         }
     }
     
     
     public void generateCodebook() {
+        /* This function may not be called in case of SVQ */
         for (Codebook book : codebooks) {
             if (book instanceof CodebookText) {
                 ((CodebookText) book).generateCodebook(DM.reader);
@@ -89,21 +98,53 @@ public class HyperCodebook {
     }
     
     
+    public void generateCodebookSVQ(HyperBag hyperBag) {
+        if (options.bSVQ) {
+            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(hyperBag, options.cbConfig.get(0));
+            ((CodebookNumeric) codebooks.get(0)).generateCodebook(train);
+        }
+    }
+    
+    
+    public void generateSubCodebooksSVQ(DataManager DM) {
+        if (!options.bSVQ) {
+            System.err.println("Error in generateSubCodebooksSVQ: Not applicable as SVQ is not chosen.");
+            return;
+        }
+        
+        int numFeaturesCodebook = 0;
+        if (Math.floorMod(DM.reader.getNumFeatures(), options.numSubCodebooksSVQ) > 0) {
+            numFeaturesCodebook = (DM.reader.getNumFeatures() / options.numSubCodebooksSVQ) + 1;
+        } else {
+            numFeaturesCodebook = DM.reader.getNumFeatures() / options.numSubCodebooksSVQ;
+        }
+        
+        for (int s=1; s <= options.numSubCodebooksSVQ; s++) {
+            List<Integer> listIndexes = new ArrayList<Integer>();
+            int indexMin = (s-1)*numFeaturesCodebook;
+            int indexMax = Math.min(s*numFeaturesCodebook-1, DM.reader.getNumFeatures()-1);
+            for (int k=indexMin; k <= indexMax; k++) {
+                listIndexes.add(DM.reader.getIndexesAttributeClass().get(1).get(k));  /* All features must have index 1 for SVQ */
+            }
+            
+            CodebookNumericTrainingSelector train = new CodebookNumericTrainingSelector(DM, options.cbConfig.get(s),listIndexes);
+            ((CodebookNumeric) codebooks.get(s)).generateCodebook(train);
+        }
+    }
+    
+    
     public boolean loadHyperCodebook(String fileName) {
         BufferedReader br = null;
         
-        String   thisLine         = null;
-        String[] content          = null;
-        
-        int[]   numAssignments   = new int [10];    // TODO: Should be more generic
-        float[] gaussianEncoding = new float [10];  // TODO: Should be more generic
-        float[] offCodewords     = new float [10];  // TODO: Should be more generic
-        
         try {
-            File inputFile = new File(fileName);
-                 br        = new BufferedReader(new FileReader(inputFile));
+            File     inputFile    = new File(fileName);
+                     br           = new BufferedReader(new FileReader(inputFile));
+            String   thisLine     = null;
+            String[] content      = null;
+            int      numFeatures  = 0;
+            int      numCodewords = 0;
             
-            int featureClass = 1;
+            int      iCodebook    = 0;
             
             /* Check for preprocessing instructions */
             while ((thisLine = br.readLine()) != null) {
@@ -141,33 +182,11 @@ public class HyperCodebook {
                     fMINOutput   = parseFloatLine(br.readLine().split(";"));
                     fWIDTHOutput = parseFloatLine(br.readLine().split(";"));                    
                 }
-                else if (content[0].equals("codebookText")) {
-                    String stopWords = br.readLine();
-                    int    nGram     = Integer.parseInt(br.readLine());
-                    int    nCharGram = Integer.parseInt(br.readLine());
-                    
-                    int numCodewords = Integer.parseInt(br.readLine());
-                    
-                    String[] codewords = new String[numCodewords];
-                    for (int w=0; w < numCodewords; w++) {
-                        codewords[w] = br.readLine();
-                    }
-                    
-                    ((CodebookText)codebooks.get(0)).setCodebook(codewords, stopWords, nGram, nCharGram);
-                }
-                else if (content[0].equals("codebookNumeric") || content[0].equals("codebookNumericNGram")) {
-                    boolean bNumGrams = false;
-                    if (content[0].equals("codebookNumericNGram")) {
-                        bNumGrams = true;
-                    }
-                    
-                    /* Parse the given header line and codewords */
+                else if (content[0].equals("codebookNumeric")) {
                     content = br.readLine().split(";");
-                    int numCodewords               = Integer.parseInt(content[0]);
-                    int numFeatures                = Integer.parseInt(content[1]);
-                    numAssignments[featureClass]   = Integer.parseInt(content[2]);
-                    gaussianEncoding[featureClass] = Float.parseFloat(content[3]);
-                    offCodewords[featureClass]     = Float.parseFloat(content[4]);
+                    
+                    numCodewords = Integer.parseInt(content[0]);
+                    numFeatures  = Integer.parseInt(content[1]);
                     
                     float[][] codewords = new float[numCodewords][numFeatures];
                     for (int w=0; w < numCodewords; w++) {
@@ -177,39 +196,41 @@ public class HyperCodebook {
                         }
                     }
                     
-                    /* Numeric n-grams */
-                    int[][] unigrams = null;
-                    int[][] bigrams  = null;
-                    int[][] trigrams = null;
-                    if (bNumGrams) {
-                        List<int[][]> listGrams = readUniBiTrigrams(br);
-                        unigrams = listGrams.get(0);
-                        bigrams  = listGrams.get(1);
-                        trigrams = listGrams.get(2);
-                        if (unigrams != null) {
-                            options.bUnigram[featureClass] = true;
-                        }
-                        if (bigrams != null) {
-                            options.bBigram[featureClass] = true;
-                        }
-                        if (trigrams != null) {
-                            options.bTrigram[featureClass] = true;
+                    ((CodebookNumeric)codebooks.get(iCodebook)).setCodebook(codewords);
+                    iCodebook++;
+                }
+                else if (content[0].equals("codebookText")) {
+                    String stopWords = br.readLine();
+                    int    nGram     = Integer.parseInt(br.readLine());
+                    int    nCharGram = Integer.parseInt(br.readLine());
+                    
+                    numCodewords = Integer.parseInt(br.readLine());
+                    
+                    String[] codewords = new String[numCodewords];
+                    for (int w=0; w < numCodewords; w++) {
+                        codewords[w] = br.readLine();
+                    }
+                    
+                    ((CodebookText)codebooks.get(iCodebook)).setCodebook(codewords, stopWords, nGram, nCharGram);
+                    iCodebook++;
+                }
+                else if (content[0].equals("codebookSVQ")) {
+                    options.bSVQ = true;
+                    content = br.readLine().split(";");
+                    
+                    numCodewords = Integer.parseInt(content[0]);
+                    numFeatures  = Integer.parseInt(content[1]);
+                    
+                    float[][] codewords = new float[numCodewords][numFeatures];
+                    for (int w=0; w < numCodewords; w++) {
+                        content = br.readLine().split(";");
+                        for (int k=0; k < numFeatures; k++) {
+                            codewords[w][k] = Float.parseFloat(content[k]);
                         }
                     }
                     
-                    /* Determine the correct codebook */
-                    CodebookNumeric thisBook = null;
-                    for (Codebook book : codebooks) {
-                        if (indexBook.get(book)==featureClass) {
-                            thisBook = (CodebookNumeric) book;
-                        }
-                    }
-                    featureClass++;
-                    thisBook.setCodebook(codewords);
-                    
-                    if (bNumGrams) {
-                        thisBook.setNGramCodebooks(unigrams, bigrams, trigrams);
-                    }
+                    ((CodebookNumeric)codebooks.get(iCodebook)).setCodebook(codewords);
+                    iCodebook++;
                 }
             }
         } catch (IOException e) {
@@ -225,10 +246,6 @@ public class HyperCodebook {
             }
         }
         
-        options.numAssignments   = numAssignments;
-        options.gaussianEncoding = gaussianEncoding;
-        options.offCodewords     = offCodewords;
-        
         return true;
     }
     
@@ -243,6 +260,9 @@ public class HyperCodebook {
     
     
     public boolean saveHyperCodebook(String fileName) {
+        int numCodewords = 0;
+        int numFeatures  = 0;
+        
         try {
             File outputFile = new File(fileName);
             if (!outputFile.exists()) {
@@ -325,7 +345,7 @@ public class HyperCodebook {
                 bw.newLine();
             }
             
-            /* Codebooks */
+            /* Numeric Codebook */
             for (Codebook codeBook : codebooks) {
                 if (codeBook instanceof CodebookText) {
                     CodebookText book = (CodebookText) codeBook;
@@ -336,7 +356,7 @@ public class HyperCodebook {
                     bw.write(String.valueOf(book.getNGram())); bw.newLine();
                     bw.write(String.valueOf(book.getNCharGram())); bw.newLine();
                     
-                    int numCodewords = codewords.length;
+                    numCodewords = codewords.length;
                     bw.write(String.valueOf(numCodewords)); bw.newLine();
                     for (int w=0; w < numCodewords; w++) {
                         bw.write(codewords[w]); bw.newLine();
@@ -345,82 +365,23 @@ public class HyperCodebook {
                     CodebookNumeric book = (CodebookNumeric) codeBook;
                     float[][] codewords = book.getCodebook();
                     
-                    int numCodewords = codewords.length;
-                    int numFeatures  = codewords[0].length;
+                    numCodewords = codewords.length;
+                    numFeatures  = codewords[0].length;
                     
-                    if (options.bUnigram[this.getIndexBook(book)] 
-                     || options.bBigram[this.getIndexBook(book)] 
-                     || options.bTrigram[this.getIndexBook(book)]) 
-                    {
-                        bw.write("codebookNumericNGram"); bw.newLine();
+                    if (options.bSVQ && codeBook.equals(codebooks.get(0))) {
+                        bw.write("codebookSVQ"); bw.newLine();
                     } else {
                         bw.write("codebookNumeric"); bw.newLine();
                     }
-                    bw.write(String.valueOf(numCodewords) + ";" 
-                            + String.valueOf(numFeatures) + ";" 
-                            + String.valueOf(options.numAssignments[this.getIndexBook(book)]) + ";" 
-                            + String.valueOf(options.gaussianEncoding[this.getIndexBook(book)]) + ";"
-                            + String.valueOf(options.offCodewords[this.getIndexBook(book)]));
-                    bw.newLine();
                     
                     /* Write codewords */
+                    bw.write(String.valueOf(numCodewords) + ";" + String.valueOf(numFeatures)); bw.newLine();
+                    
                     for (int w=0; w < numCodewords; w++) {
                         for (int k=0; k < numFeatures; k++) {
                             bw.write(String.valueOf(codewords[w][k]));
                             if (k < numFeatures-1) { bw.write(";"); }
                         } bw.newLine();
-                    }
-                    
-                    /* NumericNGrams */
-                    if (options.bUnigram[this.getIndexBook(book)] 
-                     || options.bBigram[this.getIndexBook(book)] 
-                     || options.bTrigram[this.getIndexBook(book)]) 
-                    {
-                        String strGrams = getNGramHeaderString(options.bUnigram[this.getIndexBook(book)],
-                                                               options.bBigram[this.getIndexBook(book)],
-                                                               options.bTrigram[this.getIndexBook(book)]);
-                        bw.write(String.valueOf(strGrams));
-                        bw.newLine();
-                    }
-                    
-                    if (options.bUnigram[this.getIndexBook(book)])
-                    {
-                        int[][] unigrams = book.getUnigrams();
-                        numCodewords = unigrams.length; 
-                        int numGrams = unigrams[0].length;
-                        bw.write("num;" + String.valueOf(numCodewords)); bw.newLine();
-                        for (int w=0; w < numCodewords; w++) {
-                            for (int k=0; k < numGrams; k++) {
-                                bw.write(String.valueOf(unigrams[w][k]));
-                                if (k < numGrams-1) { bw.write(";"); }
-                            } bw.newLine();
-                        }
-                    }
-                    if (options.bBigram[this.getIndexBook(book)])
-                    {
-                        int[][] bigrams = book.getBigrams();
-                        numCodewords = bigrams.length;
-                        int numGrams = bigrams[0].length;
-                        bw.write("num;" + String.valueOf(numCodewords)); bw.newLine();
-                        for (int w=0; w < numCodewords; w++) {
-                            for (int k=0; k < numGrams; k++) {
-                                bw.write(String.valueOf(bigrams[w][k]));
-                                if (k < numGrams-1) { bw.write(";"); }
-                            } bw.newLine();
-                        }
-                    }
-                    if (options.bTrigram[this.getIndexBook(book)])
-                    {
-                        int[][] trigrams = book.getTrigrams();
-                        numCodewords = trigrams.length;
-                        int numGrams = trigrams[0].length;
-                        bw.write("num;" + String.valueOf(numCodewords)); bw.newLine();
-                        for (int w=0; w < numCodewords; w++) {
-                            for (int k=0; k < numGrams; k++) {
-                                bw.write(String.valueOf(trigrams[w][k]));
-                                if (k < numGrams-1) { bw.write(";"); }
-                            } bw.newLine();
-                        }
                     }
                 }
             }
@@ -502,7 +463,6 @@ public class HyperCodebook {
         this.fWIDTH = WIDTH;
     }
     
-    
     /* Standardization / Normalization of the term frequencies */
     public boolean isOutputStandardized() {
         return options.bStandardizeOutput;
@@ -543,6 +503,22 @@ public class HyperCodebook {
     }
     
     
+    public int getSize() {
+        /* SVQ:    Returns the size of the top codebook  */
+        /* No SVQ: Returns the sum of all codebook sizes */
+        int size = 0;
+        if (options.bSVQ) {
+            size = ((CodebookNumeric) codebooks.get(0)).size();
+        }
+        else {
+            for (Codebook book : codebooks) {
+                size += book.size();
+            }
+        }
+        return size;
+    }
+    
+    
     /* Term weighting */
     public boolean getIDFWeighting() {
         return options.bIDFWeighting;
@@ -563,99 +539,5 @@ public class HyperCodebook {
     }
     public void setLogWeighting() {
         this.options.bLogWeighting = true;
-    }
-    
-    
-    private List<int[][]> readUniBiTrigrams(BufferedReader br) {
-        List<int[][]> listGrams = new ArrayList<int[][]>();
-        
-        try {
-            int[][] unigrams = null;
-            int[][] bigrams  = null;
-            int[][] trigrams = null;
-            
-            String[] content = br.readLine().split(";");  // Format uni;bi;tri (0/1)
-            boolean bUni = false;
-            boolean bBi  = false;
-            boolean bTri = false;
-            if (Integer.parseInt(content[0]) == 1) {
-                bUni = true;
-            }
-            if (Integer.parseInt(content[1]) == 1) {
-                bBi = true;
-            }
-            if (Integer.parseInt(content[2]) == 1) {
-                bTri = true;
-            }
-            
-            if (bUni) {
-                content          = br.readLine().split(";");
-                int numCodewords = Integer.parseInt(content[1]);
-                int numGrams     = 1;
-                unigrams = new int[numCodewords][numGrams];
-                for (int w=0; w < numCodewords; w++) {
-                    content = br.readLine().split(";");
-                    unigrams[w][0] = Integer.parseInt(content[0]);
-                }
-            }
-            
-            if (bBi) {
-                content          = br.readLine().split(";");
-                int numCodewords = Integer.parseInt(content[1]);
-                int numGrams     = 2;
-                bigrams = new int[numCodewords][numGrams];
-                for (int w=0; w < numCodewords; w++) {
-                    content = br.readLine().split(";");
-                    bigrams[w][0] = Integer.parseInt(content[0]);
-                    bigrams[w][1] = Integer.parseInt(content[1]);
-                }
-            }
-            
-            if (bTri) {
-                content          = br.readLine().split(";");
-                int numCodewords = Integer.parseInt(content[1]);
-                int numGrams     = 3;
-                trigrams = new int[numCodewords][numGrams];
-                for (int w=0; w < numCodewords; w++) {
-                    content = br.readLine().split(";");
-                    trigrams[w][0] = Integer.parseInt(content[0]);
-                    trigrams[w][1] = Integer.parseInt(content[1]);
-                    trigrams[w][2] = Integer.parseInt(content[2]);
-                }
-            }
-            
-            listGrams.add(unigrams);
-            listGrams.add(bigrams);
-            listGrams.add(trigrams);
-        } catch (IOException e) {
-            System.err.println("Error in reading numeric n gram codebooks!");
-            e.printStackTrace();
-        }
-        
-        return listGrams;
-    }
-    
-    
-    private String getNGramHeaderString(boolean bUni, boolean bBi, boolean bTri) {
-        String str = "";
-        if (bUni) {
-            str = str.concat("1;");
-        } else {
-            str = str.concat("0;");
-        }
-        
-        if (bBi) {
-            str = str.concat("1;");
-        } else {
-            str = str.concat("0;");
-        }
-        
-        if (bTri) {
-            str = str.concat("1");
-        } else {
-            str = str.concat("0");
-        }
-        
-        return str;
     }
 }

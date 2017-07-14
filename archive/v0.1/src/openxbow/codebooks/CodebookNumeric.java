@@ -31,132 +31,9 @@ import openxbow.codebooks.CodebookConfig.cbgenmethod;
 public class CodebookNumeric extends Codebook {
     private float[][] codewords = null;
     
-    private int[][] unigrams = null;
-    private int[][] bigrams  = null;
-    private int[][] trigrams = null;
-    
     public CodebookNumeric(CodebookConfig config) {
         super(config);
     }
-    
-    
-    public void generateNumericGramCodebooks(int[][] assignments, int[] idOrigInstances, boolean bUni, boolean bBi, boolean bTri) {
-        if (bUni) {
-            unigrams = generateSpecificNumericGramCodebook(assignments, idOrigInstances, 1, config.maxSizeUnigram);
-        }
-        if (bBi) {
-            bigrams = generateSpecificNumericGramCodebook(assignments, idOrigInstances, 2, config.maxSizeBigram);
-        }
-        if (bTri) {
-            trigrams = generateSpecificNumericGramCodebook(assignments, idOrigInstances, 3, config.maxSizeTrigram);
-        }
-    }
-    
-    
-    private int[][] generateSpecificNumericGramCodebook(int[][] assignments, int[] idOrigInstances, int numGram, int maxSize) {
-        /* Gather a list of all combinations of assignments found in the bags.  */
-        
-        int   maxNumGrams = (int) Math.pow(codewords.length, numGram);
-        int[] frequency   = new int [maxNumGrams];  /* numGram=2: 0 0; 0 1; 0 2; 1 0; 1 1; 1 2; ... */
-        
-        for (int f=0; f < frequency.length; f++) {
-            frequency[f] = 0;
-        }
-        
-        int fIndex;
-        int ind0;
-        int ind1;
-        int ind2;
-                
-        /* Speed up */
-        if (numGram==1) {
-            for (int m=0; m < assignments.length; m++) {
-                for (int a=0; a < assignments[0].length; a++) {
-                    frequency[assignments[m][a]]++;
-                }
-            }
-        } else if (numGram==2) {
-            int offset = codewords.length;
-            for (int m=0; m < assignments.length-1; m++) {
-                if (idOrigInstances[m]!=idOrigInstances[m+1]) {
-                    continue;
-                }
-                for (int a=0; a < assignments[0].length; a++) {
-                    for (int a1=0; a1 < assignments[0].length; a1++) {
-                        ind0 = assignments[m][a];
-                        ind1 = assignments[m+1][a1];
-                        fIndex = ind0*offset + ind1;
-                        frequency[fIndex]++;
-                    }
-                }
-            }
-        } else if (numGram==3) {
-            int offset0 = (int) Math.pow(codewords.length, 2);
-            int offset1 = codewords.length;
-            for (int m=0; m < assignments.length-2; m++) {
-                if (idOrigInstances[m]!=idOrigInstances[m+1] || idOrigInstances[m]!=idOrigInstances[m+2]) {
-                    continue;
-                }
-                for (int a=0; a < assignments[0].length; a++) {
-                    for (int a1=0; a1 < assignments[0].length; a1++) {
-                        for (int a2=0; a2 < assignments[0].length; a2++) {
-                            ind0 = assignments[m][a];
-                            ind1 = assignments[m+1][a1];
-                            ind2 = assignments[m+2][a2];
-                            fIndex = ind0*offset0 + ind1*offset1 + ind2;
-                            frequency[fIndex]++;
-                        }
-                    }
-                }
-            }
-        }
-        
-        /* Determine the threshold frequency */
-        int[] tmpFrequency = Arrays.copyOf(frequency, frequency.length);
-        Arrays.sort(tmpFrequency);
-        int minFrequency = tmpFrequency[tmpFrequency.length-maxSize];
-        
-        int[][] grams = new int[maxSize][numGram];
-        
-        /* Speed up */
-        if (numGram==1) {
-            int k=0;
-            for (int f=0; f < frequency.length; f++) {
-                if (frequency[f] >= minFrequency) {
-                    grams[k][0] = f;
-                    k++;
-                    if (k==maxSize) { break; }; /* In case of equal frequencies */
-                }
-            }
-        } else if (numGram==2) {
-            int offset = codewords.length;
-            int k=0;
-            for (int f=0; f < frequency.length; f++) {
-                if (frequency[f] >= minFrequency) {
-                    grams[k][0] = Math.floorDiv(f,offset);
-                    grams[k][1] = Math.floorMod(f,offset);
-                    k++;
-                    if (k==maxSize) { break; }; /* In case of equal frequencies */
-                }
-            }
-        } else if (numGram==3) {
-            int offset0 = (int) Math.pow(codewords.length, 2);
-            int offset1 = codewords.length;
-            int k=0;
-            for (int f=0; f < frequency.length; f++) {
-                if (frequency[f] >= minFrequency) {
-                    grams[k][0] = Math.floorDiv(f,offset0);
-                    grams[k][1] = Math.floorDiv(Math.floorMod(f,offset0),offset1);
-                    grams[k][2] = Math.floorMod(f,offset1);
-                    k++;
-                    if (k==maxSize) { break; }; /* In case of equal frequencies */
-                }
-            }
-        }
-        
-        return grams;
-    }
-    
     
     public void generateCodebook(CodebookNumericTrainingSelector train) {
         if (train.trainingDataSupervised != null) {
@@ -227,10 +104,6 @@ public class CodebookNumeric extends Codebook {
             else if (config.generationMethod==cbgenmethod.randompp) {
                 codewords = randomSamplingPlusPlus(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
             }
-            else if (config.generationMethod==cbgenmethod.generic) {
-                CodebookNumericGeneric cbGeneric = new CodebookNumericGeneric(config);
-                codewords = cbGeneric.generateCodebook(train.trainingData.get(0).length);
-            }
             else {
                 System.err.println("Error: Codebook generation method unknown.");
             }
@@ -276,7 +149,7 @@ public class CodebookNumeric extends Codebook {
         }
     }
     
-
+    
     private float[][] randomSampling(List<float[]> trainingData, int sizeCodebook, int randomSeed) {
         float[][] centroids     = new float[sizeCodebook][trainingData.get(0).length];
         Random    randGenerator = new Random(randomSeed);  /* Seed 10 to keep it consistent with simpleKMeans in Weka */
@@ -599,23 +472,7 @@ public class CodebookNumeric extends Codebook {
         return codewords;
     }
     
-    public int[][] getUnigrams() {
-        return unigrams;
-    }
-    public int[][] getBigrams() {
-        return bigrams;
-    }
-    public int[][] getTrigrams() {
-        return trigrams;
-    }
-    
     public void setCodebook(float[][] codewords) {
         this.codewords = codewords; 
-    }
-    
-    public void setNGramCodebooks(int[][] unigrams, int[][] bigrams, int[][] trigrams) {
-        this.unigrams = unigrams;
-        this.bigrams  = bigrams;
-        this.trigrams = trigrams;
     }
 }

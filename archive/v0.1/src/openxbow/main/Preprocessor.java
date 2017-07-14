@@ -113,10 +113,6 @@ public class Preprocessor {
         
         List<Object[]> inputData = reader.inputData;
         
-        if (inputData.get(0).length != mean.length || inputData.get(0).length != std.length) {
-            System.err.println("Warning (Preprocessor): Input data and standardization parameters have different dimensions!");
-        }
-        
         /* Standardization */
         for (Entry<Integer,List<Integer>> e : reader.getIndexesAttributeClass().entrySet()) {
             if (e.getKey() > 0) {  /* Numeric */
@@ -176,9 +172,6 @@ public class Preprocessor {
         for (int f=0; f < std.length; f++) {
             std[f] = std[f] / (counter - 1);
             std[f] = (float) Math.sqrt(std[f]);
-            if (std[f] < Float.MIN_NORMAL) {
-                std[f] = 1.0f;
-            }
         }
         
         return std;
@@ -189,10 +182,6 @@ public class Preprocessor {
         System.out.println("Normalization of the input ...");
         
         List<Object[]> inputData = reader.inputData;
-        
-        if (inputData.get(0).length != MIN.length || inputData.get(0).length != WIDTH.length) {
-            System.err.println("Warning (Preprocessor): Input data and standardization parameters have different dimensions!");
-        }
         
         /* Normalization */
         for (Entry<Integer,List<Integer>> e : reader.getIndexesAttributeClass().entrySet()) {
@@ -237,7 +226,9 @@ public class Preprocessor {
         for (int f=0; f < MIN.length; f++) {
             WIDTH[f] = MAX[f] - MIN[f];
             if (WIDTH[f] < Float.MIN_NORMAL) {
-                WIDTH[f] = 1.0f;
+                WIDTH[f] = 1;
+                //System.err.println("Warning: Feature " + String.valueOf(f) + " seems to be constant.");
+                //Includes also non-numeric attributes
             }
         }
         

@@ -48,9 +48,9 @@ In the following, four examples on how to use opemXBOW are given, highlighting s
 A typical use case would be the classification of audio segments or images. For each audio/image document, a certain number of feature vectors, i.e., numeric low-level descriptors (LLDs), e.g., MFCCs, SIFT, etc. are given.  
 From all LLDs belonging to one document/sample, a bag-of-words representation should be created.  
 In the folder `examples/example1`, you find two files `llds.arff` and `llds.csv`, which contain exactly the same information, but differ only in the format (ARFF, used by the machine learning software *Weka*) and CSV. You can always use either of the two formats, depending on your personal preference. The first attribute (or column) is always a string specifying the sample name the LLDs belong to. The file `labels.csv` is a list of lables for each sample. Please note that a CSV (separator `;`) file and a **header** line are required here.  
-The file `llds_labels.arff` is another representation of the same LLDs, but here, the labels are directly included in the ARFF file. The labels can also be included in the same way as a column in the CSV file (this is not shown here). However, in case the labels are provided with the LLDs, the value for the target attribute/column must be constant throughout the LLDs of the same document. It is even possible to have multiple labels (targets) for each segment. Then, each target must have it's own attribute (ARFF) or column (CSV).  
+The file `llds_labels.arff` is another representation of the same LLDs, but here, the labels are directly included in the ARFF file. The labels can also be included in the same way as a column in the CSV file (this is not shown here). However, in case the labels are provided with the LLDs, the value for the target attribute/column must be constant throughout the LLDs of the same document. It is even possible to have multiple labels (targets) for each segment. Then, each target must have its own attribute (ARFF) or column (CSV).  
 
-Now, let's start to generate a bag-of-words output for the sample data. The three following four lines using different input formats should all create the same output arff bag-of-words file.
+Now, let's start to generate a bag-of-words output for the sample data. The three following lines using different input formats should all create the same output arff bag-of-words file.
 
     java -jar openXBOW.jar -i examples/example1/llds.arff -l examples/example1/labels.csv -o bow.arff
     java -jar openXBOW.jar -i examples/example1/llds.csv  -l examples/example1/labels.csv -o bow.arff
@@ -97,7 +97,7 @@ After the generation of the bag-of-words representation, they can be further pro
 
 The histogram normalization is a very common option and especially required when the amount of input LLDs differs between the different input documents/samples.  
 
-Usually, it is also required to **standardise** (or **normalise**) the input LLDs as their values are in different ranges. This can be tackled using the options `-standardizeInput` or `-normalizeOutput`. Note that, the corresponding parameters derived from the data (in case of standardisation: mean and std. deviation) are also *stored* in the codebook and are then applied to test data (*online* approach). The same goes for the standardisation/normalisation of the resulting bag-of-words representation. This is done by openXBOW using `-standardizeOutput` or `-normalizeOutput`. Standardisation/normalisation of the features is required (or at least useful) in some machine learning algorithms, such as, e.g., support vector machine.  
+Usually, it is also required to **standardise** (or **normalise**) the input LLDs as their values are in different ranges. This can be tackled using the options `-standardizeInput` or `-normalizeInput`. Note that, the corresponding parameters derived from the data (in case of standardisation: mean and std. deviation) are also *stored* in the codebook and are then applied to test data (*online* approach). The same goes for the standardisation/normalisation of the resulting bag-of-words representation. This is done by openXBOW using `-standardizeOutput` or `-normalizeOutput`. Standardisation/normalisation of the features is required (or at least useful) in some machine learning algorithms, such as, e.g., support vector machine.  
 
 Further options can be seen in the default help text on the command line.  
 
@@ -153,13 +153,13 @@ Now, we want to perform sentiment analysis on tweets (Twitter). For that purpose
 http://thinknook.com/twitter-sentiment-analysis-training-corpus-dataset-2012-09-22  
 Here is a direct download link: http://thinknook.com/wp-content/uploads/2012/09/Sentiment-Analysis-Dataset.zip  
 
-The zip-archive contains a CSV file with 1,578,627 annotated tweets. As you see, the first column is the ID (name, `n`), the second column the sentiment (0 or 1 = target = `c`), the third column the *source* of the data which is not required here and therefore *removed* (`r`), and the last column is the text (codebook `0`). Given the huge amount of data and the almost infinite number of words, especially usernames (@xqz) etc., you need to directly limit the dictionary size. This is done by setting a minimum term frequency, i.e., the minimum number of occurrences of a word to be incorporated into the dictionary. As there are more than 1,000,000 tweets, a minimum term frequency of `2000` could be a good starting point (`minTermFreq`). There is also the option to set a maximum term frequency (`-maxTermFreq`) to exclude very common words (such as, e.g., 'and', 'do', 'it', etc.).  
+The zip-archive contains a CSV file with 1,578,627 annotated tweets. As you see, the first column is the ID (name, `n`), the second column the sentiment (0 or 1 = target = `c`), the third column the *source* of the data which is not required here and therefore *removed* (`r`), and the last column is the text (codebook `0`). Given the huge amount of data and the almost infinite number of words, especially usernames (@xqz) etc., you need to directly limit the dictionary size. This is done by setting a minimum term frequency, i.e., the minimum number of occurrences of a word to be incorporated into the dictionary. As there are more than 1,000,000 tweets, a minimum term frequency of `2000` could be a good starting point (`-minTermFreq`). There is also the option to set a maximum term frequency (`-maxTermFreq`) to exclude very common words (such as, e.g., 'and', 'do', 'it', etc.).  
 This time, we take into account that we would like to do a proper evaluation of our algorithm. We manually split the CSV file into a training (the first 1,000,000 lines/tweets) and a test partition (the remaining 578,627 lines/tweets) and store each file separately.
 
     java -Xmx12000m -jar openXBOW.jar -i "Sentiment Analysis Dataset - train.csv" -attributes ncr0 -o bowTwitter-train.arff -minTermFreq 2000 -B dictionaryTwitter
     java -Xmx12000m -jar openXBOW.jar -i "Sentiment Analysis Dataset - test.csv" -attributes ncr0 -o bowTwitter-test.arff -b dictionaryTwitter
 
-Note that you might need to increase your *Java heap space* (`-Xmx12000m`). The option `minTermFreq` is only relevant for learning the dictionary and is not repeated in the call for the test partition.  
+Note that you might need to increase your *Java heap space* (`-Xmx12000m`). The option `-minTermFreq` is only relevant for learning the dictionary and is not repeated in the call for the test partition.  
 When openXBOW is finished, you can train a classifier on `train` and evaluate it on test (e.g., support vector machine). In case you prefer Liblinear (LibSVM) to Weka, just output a file in LibSVM format (`-o bowTwitter-train.libsvm`).
 
 To use 2-grams (sequences of two words in addition to single words), use the following command lines:
@@ -172,6 +172,138 @@ Note that, the option `-nGram 2` needs to be repeated also when the learnt codeb
 Now you can play with different configurations and classifiers. Try also the options `-log` and `-idf`. Those two parameters are stored in the codebook file and do not need to be repeated in the call for the test partition.
 
 Using the first 1,000,000 tweets for training and the remaining instances for evaluation, an (unweighted) accuracy of more than 75 % can be obtained.  
+
+
+## Example 5 - Applying openXBOW to audio classification tasks
+
+Finally, we show examples with a complete processing chain, where openXBOW is used. First, we give here an example for audio classification.
+In the next example, a tutorial on image classification is given.
+
+In this example, we want to learn a Bag-of-Audio-Words model for emotion recognition in speech, based on the Berlin Database of Emotional Speech (**EmoDB**).
+
+Before we start, you need to make the following preparations:
+* Download **EmoDB** http://www.emodb.bilderbar.info/download/ (complete database) and extract the zip archive into a folder (called `./examples/example5/emodb` in the following).
+* Install the sound processing toolkit **sox** http://sox.sourceforge.net/
+* Download the **openSMILE** acoustic feature extraction toolkit http://audeering.com/technology/opensmile/ in its latest version (2.3) and extract it to a directory (called `/home/user/opensmile-2.3.0` in the following).
+* Install **Python2**, which we will use for scripting https://www.python.org/downloads/
+* Install the machine learning toolkit **Weka** http://www.cs.waikato.ac.nz/ml/weka/
+Please find the installation instructions on the corresponding websites.
+
+As a first step, we need to extract acoustic low-level descriptors (LLDs). We use openSMILE to extract the LLDs of the **ComParE** (Computational Paralinguistics ChallengE) feature set (info: http://compare.openaudio.eu/).
+As openSMILE supports does not support the 32-bit wave files from EmoDB, they are converted to 16-bit files using SoX beforehand.
+Moreover, we require a speaker-independent training and test partition in order to obtain a reliable estimate of the performance for unknown speakers.
+We use speakers with the IDs 03, 08, 09, and 10 (encoded by the first two characters of the filenames) for the test partition and the remaining 6 speakers (11, 12, 13, 14, 15, and 16) for the training partition.
+Finally, we also need a text file with the label for each instance (wave file). The corresponding emotion (A=fear, E=disgust, F=happiness, L=boredom, N=neutral, T=sadness, W=anger) is encoded in the 6th character of the filenames.
+All steps to prepare the EmoDB data for feature extraction are abstracted in the Python script `prepare_emodb.py`.
+
+The feature extraction can be done using the script `extract_acoustic_features.py` which can be used for arbitrary audio data in wave (PCM, 16 bits) format.
+The ComParE feature set consists of 130 LLDs in total. Information about the corresponding features are given in the header line of the output files.
+
+After executing the two commands
+
+    python prepare_emodb.py
+    python extract_acoustic_features.py
+
+openXBOW can be applied.
+
+We introduce the following two variables to keep the arguments of openXBOW simple. They comprise the paths to the input file (audio_llds_train.csv), output file (xbow_train.arff), labels file (labels_train.csv), and codebook file (codebook) given that they are located (to be stored) in the examples/example5/ subfolder of the openXBOW base directory.
+Note that, the command for the codebook file differs for the training and the test partition (`-B` vs `-b`).
+
+    IOTRAIN="-i examples/example5/audio_llds_train.csv -o examples/example5/xbow_train.arff -l examples/example5/labels_train.csv -B examples/example5/codebook" 
+    IOTEST="-i examples/example5/audio_llds_test.csv -o examples/example5/xbow_test.arff -l examples/example5/labels_test.csv -b examples/example5/codebook"
+
+To launch openXBOW, run the following command on the console:
+
+    java -jar openXBOW.jar $IOTRAIN 
+
+For the resulting BoAW output feature file (xbow_train.arff), we want to train and evaluate a Support Vector Machine classifier in Weka. You can either use the GUI to load the ARFF file, select the classifier *SMO* in the group *functions* and 10-fold cross validation (CV) for evaluation, or you can run Weka on the console (with the corresponding classpath, the given command line assumes that you use Windows and Weka 3.8 is installed in the Program Files directory):
+
+    java -classpath "C:\Program Files\Weka-3-8\weka.jar" weka.classifiers.functions.SMO -t examples/example5/xbow_train.arff
+
+Note that, this kind of evaluation is not speaker-independent (the same speaker may appear in different folds), though speaker-independence is a basic requirement when dealing with speech data. Due to the limited size of the dataset, however, we employ 10-fold CV for a first quick performance estimate. In a later step, we will apply the optimised model on the speaker-independent test partition, in order to obtain a reliable result for the accuracy.
+
+You should see that the obtained accuracy (Weighted Average Recall) is approx. 34 %, which is not a good result for this dataset. Thus, you will need to optimise some parameters in openXBOW.
+First of all, we are going to employ standardisation of the input features (LLDs). This step should be beneficial as the LLDs comprise very different ranges of numeric values, which has a huge influence on the word assignment step.
+
+Run the following command on the console:
+
+    java -jar openXBOW.jar $IOTRAIN -standardizeInput
+
+and use the same command for Weka as before.
+You will realise that the accuracy has improved tremendously to approx. 72 %.
+Further optimisation might include a logarithmic term-frequency weighting, an increased codebook size (default is 500), another number of assignments (default is 1) and a split of the input feature space into different codebooks. The latter is done by defining a certain number of codebooks with a certain number of input features with the `-attributes` option.
+Run the following commands successively and Weka after each run of openXBOW. You will recognise that the accuracy improves after each step.
+
+    java -jar openXBOW.jar $IOTRAIN -standardizeInput -log
+    
+    java -jar openXBOW.jar $IOTRAIN -standardizeInput -log -size 1000
+    
+    java -jar openXBOW.jar $IOTRAIN -standardizeInput -log -size 1000 -a 5 -attributes nt1[65]2[65]
+
+In the last command, `nt1[65]2[65]` specifies that the 1st attribute (column) in the input file (audio_llds_train.csv) is the `name` (`n`) of the instance, the LLD belongs to. The 2nd attribute, `t`, is the `time stamp`. The following 65 numeric descriptors are concatenated and used as input for the first codebook (`1[65]`). The remaining 65 LLDs are the input for the second codebook (`2[65]`). Split codebooks can indeed contribute to a higher accuracy. The resulting BoW are fused before the post-processing (early fusion).
+Note that, `-size 1000` specifies the size of each codebook, i.e., the final size of the BoW vectors is 2000 in the given example. You can also determine the size for each codebook directly, by separating the sizes for each codebook with a comma (`,`): e.g., `-size 1000,500`, to employ a smaller codebook for the LLDs with indexes 66 to 130.
+
+Finally, we end up in an accuracy of approx. 85.9 %. However, this evaluation is not speaker-independent.
+Thus, we apply openXBOW to the test partition using the command:
+
+    java -jar openXBOW.jar $IOTEST -attributes nt1[65]2[65]
+
+Note that, the codebook is not learnt here, but the codebook learnt from the training partition is reused. This is done using the option `-b` (with a lowercase `b`) in the $IOTEST. If another codebook was learnt from the test feature set, the resulting BoW would not be compatible at all with the BoW from the training set and so, the trained classifier could not be used.
+Furthermore, note that, the `-attributes` argument needs to be repeated for the test data. All other options are stored in the codebook file and are also loaded with the option `-b`.
+
+    java -classpath "C:\Program Files\Weka-3-8\weka.jar" weka.classifiers.functions.SMO -t examples/example5/xbow_test.arff
+    
+You will see that, an accuracy of approximately 81.4 % can be reached on the speaker-independent test partition.
+
+
+## Example 6 - Applying openXBOW to image classification tasks
+
+In this tutorial, we exemplify how to apply openXBOW to a simple image classification task, using the Bag-of-Visual-Words (BoVW) approach. As a sample dataset, we use the **Caltech101** dataset.
+We are going to train a model to discriminate between 5 different image classes and evaluate using 10-fold cross validation.
+
+Before we start, you need to make the following preparations:
+* Download the dataset 101_ObjectCategories.tar.gz from the website: http://www.vision.caltech.edu/Image_Datasets/Caltech101/ and extract it into a folder (called `./examples/example6/caltech101` in the following).
+* Install **Python2**, which will be used for scripting https://www.python.org/downloads/
+* Install the Python image processing package Scikit-Image http://scikit-image.org/
+* Install the machine learning toolkit **Weka** http://www.cs.waikato.ac.nz/ml/weka/
+Please find the installation instructions on the corresponding websites.
+
+We consider only a subset of the Caltech101 dataset, namely, the images of the classes *anchor*, *barrel*, *elephant*, *pizza*, and *saxophone*. As a first step, the files in the corresponding folders are copied to the folder `images' and renamed, as the original filenames are not unique over different classes. This is done by running the Python script *prepare_caltech101.py*:
+
+    python prepare_caltech101.py
+
+Next, we need to define, which features we are going to consider. BoVW requires a certain amount of local image descriptors for each image. These can be, e.g., Scale-Invariant Feature Transform (SIFT) features.
+In this method, certain keypoints are detected in each image as a first step. Then, local descriptors are generated describing the neighbourhood around these keypoints. In this tutorial, however, we are going to employ the so-called **Daisy** descriptors introduced by Tola et al. in 2010, which are extracted in dense regions all over the image. Calling the Python script *extract_visual_features.py* you are extracting Daisy features for all images and storing them in the CSV file *visual_features.csv*.
+
+    python extract_visual_features.py
+    
+As in the preceding tutorial, we are going to define a variable for the openXBOW input and output files:
+
+    IOXBOW="-i examples/example6/visual_features.csv -o examples/example6/xbow.arff -l examples/example6/labels.csv -B examples/example6/codebook" 
+
+To launch openXBOW, run the following command on the console:
+
+    java -jar openXBOW.jar $IOXBOW 
+
+For the resulting BoVW output feature file (xbow.arff), we train and evaluate a Support Vector Machine classifier in Weka. You can either use the GUI to load the ARFF file, select the classifier *SMO* in the group *functions* and 10-fold cross validation (CV) for evaluation, or you can run Weka on the console (with the corresponding classpath, the given command line assumes that you use Windows and Weka 3.8 is installed in the Program Files directory):
+
+    java -classpath "C:\Program Files\Weka-3-8\weka.jar" weka.classifiers.functions.SMO -t examples/example6/xbow.arff
+
+You should see that the obtained accuracy (Weighted Average Recall) is approx. 68.7 %. Next, parameters of openXBOW are optimised.
+As the standardisation of the input will not have a huge influence when using binary features, we are going to employ logarithmic term-frequency weighting, first of all.
+Run the following command on the console:
+
+    java -jar openXBOW.jar $IOTRAIN -log
+
+and use the same command for Weka as before. You will recognise that the accuracy has improved to approx. 69.5 %.
+Now, we are going to increase the codebook size and the number of assignments. As you might have noticed, the feature vectors are larger compared to the LLDs used in the tutorial on speech classification.
+
+    java -jar openXBOW.jar $IOXBOW -log -size 4000 -a 3
+
+With a codebook size of 5000 and 5 assignments per LLD, an accuracy of 82.1 % is achieved.
+Note that, the same codebook learnt from the whole data set is used for all folds generated in the cross validation, i.e., the expected accuracy on unknown data can be lower than the one obtained.
+Reusing a codebook trained on another data set can be done using the openXBOW option `-b' as introduced before (e.g., in example 5).
+Further improvement of the accuracy can be obtained by optimising the parameters of the image descriptors (Daisy).
 
 
 **Thank you for your interest and reading this tutorial!**  

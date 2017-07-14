@@ -20,6 +20,7 @@
 
 package openxbow.main;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,13 +37,20 @@ public class Bag {
     private List<Integer>  indexFeatures;
     
     public  float[][] bof         = null;
-    public  int[][]   assignments = null;  /* Dim 1: frameIndex, Dim 2: assignment index (multi assignment) */
+    public  Object[]  assignments = null;  /* Must be Object as it will be used as a feature in the top-level bag in SVQ */
     
     public Bag (List<Object[]> data, Codebook book, DataManager DM, List<Integer> indexFeatures) {
         this.data          = data;
         this.book          = book;
         this.DM            = DM;
-        this.indexFeatures = indexFeatures;
+        this.indexFeatures = indexFeatures;  /* May be null in case of SVQ */
+        
+        if (indexFeatures==null) {
+            this.indexFeatures = new ArrayList<Integer>();
+            for (int k=0; k < data.get(0).length; k++) {
+                this.indexFeatures.add(k);
+            }
+        }
     }
     
     public Bag() {
@@ -57,9 +65,14 @@ public class Bag {
         
         String2WordVector s2wv = new String2WordVector();
         
-        Map<Integer,List<Integer>> mapFrameIDs = DM.getMappingFrameIDs();
+        Map<Integer,List<Integer>> mapFrameIDs = null;
         
-        bof = new float[DM.getNumIDs()][sizeCodebook];
+        if (DM!=null) {
+            mapFrameIDs = DM.getMappingFrameIDs();
+            bof = new float[DM.getNumIDs()][sizeCodebook];
+        } else {
+            System.err.println("Error in generateBoW: IDOrganizer must be given.");
+        }
         
         /* Assign */
         int frameIndex = 0;
@@ -92,26 +105,22 @@ public class Bag {
     }
     
     
-    public void generateBoF (int numAssignments, float gaussianEncoding, float offCodewords, boolean bGetAssignments) {
+    public void generateBoF (int numAssignments, boolean bGaussianEncoding, float gaussianStdDev, boolean bGetAssignments) {
         CodebookNumeric bookNumeric = (CodebookNumeric)book;
         float[][]       codebook    = bookNumeric.getCodebook();
         
-        int sizeCodebook          = codebook.length;
-        int numFeatures           = indexFeatures.size();
-        boolean bGaussianEncoding = false;
-        boolean bOffCodewords     = false;
-        if (gaussianEncoding > Float.MIN_VALUE) {
-            bGaussianEncoding = true;
-        }
-        if (offCodewords > Float.MIN_VALUE) {
-            bOffCodewords = true;
-        }
+        int sizeCodebook = codebook.length;
+        int numFeatures  = indexFeatures.size();
         
-        Map<Integer,List<Integer>> mapFrameIDs = DM.getMappingFrameIDs();
-        bof = new float[DM.getNumIDs()][sizeCodebook];
+        Map<Integer,List<Integer>> mapFrameIDs = null;
         
-        if (bGetAssignments) {  /* Required in case of 1) Output word indexes or 2) numeric n-grams */
-            assignments = new int[data.size()][numAssignments];
+        if (DM!=null) {
+            mapFrameIDs = DM.getMappingFrameIDs();
+            bof = new float[DM.getNumIDs()][sizeCodebook];
+            
+        }
+        if (bGetAssignments) {  /* Writing word indexes or SVQ */
+            assignments = new Object[data.size()];
         }
         
         /* Assign */
@@ -151,20 +160,20 @@ public class Bag {
                 }
                 
                 if (assignments!=null) {
-                    assignments[frameIndex][a] = minIndex;
+                    assignments[frameIndex] = (float) minIndex;  /* Must convert to float, otherwise getTrainingFeatures() in CodebookTrainingSelector fails. a must be = 1 */
                 }
                 
-                float increment = 1.0f;
-                
-                if (bGaussianEncoding) {
-                    float frac = minDistance / (2 * gaussianEncoding * gaussianEncoding);  /* minDistance is squared distance */
-                    increment = (float) Math.exp(-frac);
-                }
-                
-                if (!bOffCodewords || Math.sqrt(minDistance) <= offCodewords) {
+                if (mapFrameIDs!=null) {
                     /* Increase the counter for all corresponding instances (IDs) */
                     for (int id=0; id < mapFrameIDs.get(frameIndex).size(); id++) {
-                        bof[mapFrameIDs.get(frameIndex).get(id)][minIndex] += increment;
+                        if (bGaussianEncoding) {
+                            float frac = (float) Math.sqrt(minDistance) / gaussianStdDev;
+                            frac *= frac;
+                            frac /= 2;
+                            bof[mapFrameIDs.get(frameIndex).get(id)][minIndex] += Math.exp(-frac);
+                        } else {
+                            bof[mapFrameIDs.get(frameIndex).get(id)][minIndex]++;
+                        }
                     }
                 }
                 
@@ -175,12 +184,14 @@ public class Bag {
         }
         
         /* Make sure that we do not have a bag of only zeros */
-        for (int id=0; id < bof.length; id++) {
-            if (DM.getNumFrames().get(id)==0) {
-                for (int w=0; w < bof[0].length; w++) {
-                    bof[id][w] = 0.001f;
+        if (mapFrameIDs != null) {
+            for (int id=0; id < bof.length; id++) {
+                if (DM.getNumFrames().get(id)==0) {
+                    for (int w=0; w < bof[0].length; w++) {
+                        bof[id][w] = 0.001f;
+                    }
                 }
-            }
+            }            
         }
     }
     

@@ -15,7 +15,7 @@ For more information, please visit the official websites:
 http://sewaproject.eu  
 http://ihearu.eu  
 
-(C) 2016-2017, published under GPL v3, please check the file LICENSE.txt for details.
+(C) 2016-2018, published under GPL v3, please check the file LICENSE.txt for details.
 Maximilian Schmitt, Björn Schuller: University of Passau.  
 Contact: maximilian.schmitt@uni-passau.de  
 
@@ -24,8 +24,8 @@ Contact: maximilian.schmitt@uni-passau.de
 
 If you use openXBOW or any code from openXBOW in your research work, you are kindly asked to acknowledge the use of openXBOW in your publications.  
 
-http://arxiv.org/abs/1605.06778  
-Maximilian Schmitt, Björn W. Schuller: openXBOW - Introducing the Passau Open-Source Crossmodal Bag-of-Words Toolkit, arXiv preprint arXiv:1605.06778, 2016  
+http://www.jmlr.org/papers/v18/17-113.html  
+Maximilian Schmitt and Björn Schuller: "openXBOW - Introducing the Passau Open-Source Crossmodal Bag-of-Words Toolkit", The Journal of Machine Learning Research, Volume 18, No. 96, pp. 1-5, October 2017.  
 
 
 # Tutorial

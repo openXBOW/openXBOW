@@ -15,9 +15,9 @@ For more information, please visit the official websites:
 http://sewaproject.eu  
 http://ihearu.eu  
 
-(C) 2016-2018, published under GPL v3, please check the file LICENSE.txt for details.
+(C) 2016-2019, published under GPL v3, please check the file LICENSE.txt for details.
 Maximilian Schmitt, Björn Schuller: University of Passau.  
-Contact: maximilian.schmitt@uni-passau.de  
+Contact: maximilian.schmitt@informatik.uni-augsburg.de  
 
 
 # Citing
@@ -307,5 +307,5 @@ Further improvement of the accuracy can be obtained by optimising the parameters
 
 
 **Thank you for your interest and reading this tutorial!**  
-In case you have any questions, be kindly invited to contact Maximilian Schmitt, University of Passau: maximilian.schmitt@uni-passau.de
+In case you have any questions, be kindly invited to contact Maximilian Schmitt, University of Passau/University of Augsburg: maximilian.schmitt@informatik.uni-augsburg.de
 

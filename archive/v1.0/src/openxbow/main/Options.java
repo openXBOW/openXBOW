@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -35,8 +34,6 @@ public class Options {
     protected String  attributes      = "";
     protected String  labelsFileName  = "";
     protected String  outputFileName  = "";
-    protected boolean csvHeader;
-    protected String  csvSep          = "";
     protected String  outputIFileName = "";
     protected String  modelFileName   = "";
     protected String  jsonFileName    = "";
@@ -100,8 +97,6 @@ public class Options {
         attributes       = OWParser.getOption("attributes").getParamList().get(0).toString();
         labelsFileName   = OWParser.getOption("l").getParamList().get(0).toString();
         outputFileName   = OWParser.getOption("o").getParamList().get(0).toString();
-        csvHeader        = OWParser.getOption("csvHeader").isPresent();
-        csvSep           = OWParser.getOption("csvSep").getParamList().get(0).toString();
         outputIFileName  = OWParser.getOption("oi").getParamList().get(0).toString();
         modelFileName    = OWParser.getOption("svmModel").getParamList().get(0).toString();
         jsonFileName     = OWParser.getOption("oJson").getParamList().get(0).toString();
@@ -325,9 +320,6 @@ public class Options {
         if (bRemoveLowEnergy && energyIndex < 0) {
             System.err.println("Error: Energy index not valid!");
         }
-        if (bWriteTimeStamp && !OWParser.getOption("t").isPresent()) {
-            System.err.println("Error: Time stamps can only be printed if option -t (time-dependent bags) is used.");
-        }
         if (!loadCodebookName.isEmpty()) {
             if (bRemoveLowEnergy) {
                 System.err.println("Warning: Removing low-energy features is not selectable if codebook is provided!");
@@ -391,14 +383,12 @@ public class Options {
                                            + "Input file with the structure: name,timestamp,28 numeric features split into two codebooks (14 features each) and one label.");
         OWParser.addOption("o", "", "Name / Path of an output ARFF, CSV or LibSVM file p containing the bag-of-words representation.\n"
                                   + "The file format depends on the given file ending (*.arff, *.csv or *.libsvm).");
-        OWParser.addOption("csvHeader",   "Print a header line if CSV output file is requested.");
-        OWParser.addOption("csvSep", ";", "Use separator p for the CSV output file (default: ; ).");
         OWParser.addOption("oi", "", "Name / Path of an output CSV file p containing the word indexes.");
         OWParser.addOption("svmModel", "", "Name / Path of a Liblinear model (must be L2R_LR_DUAL) to decode the BoW.\n"
                                          + "p specifies the model file. openXBOW outputs a JSON file with the same name (unless given by oJson option).");
         OWParser.addOption("oJson", "", "Name / Path of the JSON output file including the predictions of the Liblinear model (must be given by the option svmModel).");
         OWParser.addOption("writeName", "Output the id string/number in the output file (only ARFF & CSV).");
-        OWParser.addOption("writeTimeStamp", "Output the time stamp in the output file (only ARFF & CSV; the option -t must be provided).");
+        OWParser.addOption("writeTimeStamp", "Output the time stamp in the output file (only ARFF & CSV).");
         OWParser.addOption("noLabels", "Do not output the labels in the output file. This option is useful in two cases:\n"
                                      + "1) The input file (-i) contains labels, but they are not desired in the output (-o).\n"
                                      + "2) A labels file (-l) was given only to restrict the output (-o) to a certain interval in time (see -l).");
@@ -426,8 +416,8 @@ public class Options {
         OWParser.addOption("size", "500", "Set the (initial) size p of the codebook. (default: size=500)\n"
                                         + "In case of several codebooks (see -attributes) different sizes can be specified using separator comma, e.g., -size 200,500,100");
         OWParser.addOption("c", "random++", "Method of creating the codebook:\n"
-                                          + "p=random: Generate the codebook by random sampling of the input feature vectors.\n"
-                                          + "p=random++ (default): Generate the codebook by random sampling of the input feature vectors with weighting similiar to initialization of kmeans++.\n"
+                                          + "p=random (default): Generate the codebook by random sampling of the input feature vectors.\n"
+                                          + "p=random++: Generate the codebook by random sampling of the input feature vectors with weighting similiar to initialization of kmeans++.\n"
                                           + "p=kmeans: Employ kmeans clustering (Lloyd's algorithm).\n"
                                           + "p=kmeans++: Employ kmeans++ clustering (Lloyd's algorithm).\n"
                                           + "p=generic: Generate a generic codebook (independent from data). The parameter '-size' is not relevant when selecting this method.");

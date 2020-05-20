@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -41,18 +40,14 @@ public class Writer {
     private String      relation;
     private String[]    strLabels = null;
     private DataManager DM;
-    private boolean     bCsvHeader;
-    private String      csvSep;
     private boolean     bWriteName;
     private boolean     bWriteTime;
     private boolean     bNoWriteLabels;
     private boolean     bAppend;
     
-    public Writer(String fileName, DataManager DM, boolean csvHeader, String csvSep, boolean bWriteName, boolean bWriteTimeStamp, boolean bNoWriteLabels, String arffLabels, boolean bAppend) {
+    public Writer(String fileName, DataManager DM, boolean bWriteName, boolean bWriteTimeStamp, boolean bNoWriteLabels, String arffLabels, boolean bAppend) {
         this.fileNames      = fileName.split(",");  /* Multiple output files, separated by comma, may be given (so far, multiple labels are required in this case) */
         this.DM             = DM;
-        this.bCsvHeader     = csvHeader;
-        this.csvSep         = csvSep;
         this.bWriteName     = bWriteName;
         this.bWriteTime     = bWriteTimeStamp;
         this.bNoWriteLabels = bNoWriteLabels;
@@ -177,55 +172,26 @@ public class Writer {
                 }
                 
                 else if (fileTypes[f]==ftype.CSV) {
-                	if (bCsvHeader) {
-                		if (bWriteName) {
-                			bw.write("name");
-                			bw.write(csvSep);
-                        }
-                		if (bWriteTime) {
-                			bw.write("time");
-                			bw.write(csvSep);
-                		}
-                		for (int j=0; j < bof[0].length; j++) {
-                			bw.write("W(" + String.valueOf(j) + ")");
-                			if (j < bof[0].length-1) {
-                				bw.write(csvSep);
-                			}
-                		}
-                		if (bWriteLabels) {
-                			if (fileNames.length > 1 || strLabels.length==1) {  /* If several output files are given, write only one label*/
-                				bw.write(csvSep);
-                				bw.write("label");
-                			} else {
-                                for (int m=0; m < strLabels.length; m++) {
-                                	bw.write(csvSep);
-                                    bw.write("label_" + String.valueOf(m));
-                                }
-                			}
-                		}
-                		bw.newLine();
-                	}
-                	
                     for (int i=0; i < bof.length; i++) {
                         if (strLabels==null || DM.getMappingIDLabels().get(i) != null) {  /* In case labels are given, the bag is only written if a label exists for this bag */
                             if (bWriteName) {
-                                bw.write("'" + DM.getMappingIDName().get(i) + "'" + csvSep);
+                                bw.write("'" + DM.getMappingIDName().get(i) + "';");
                             }
                             if (bWriteTime) {
-                                bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + csvSep);
+                                bw.write(String.format(Locale.US,"%.2f",DM.getMappingIDTime().get(i)) + ";");
                             }
                             for (int j=0; j < bof[0].length; j++) {
                                 bw.write(String.valueOf(bof[i][j]));
                                 if (j < bof[0].length-1) {
-                                    bw.write(csvSep);
+                                    bw.write(";");
                                 }
                             }
                             if (bWriteLabels) {
                                 if (fileNames.length > 1) {
-                                    bw.write(csvSep + editLabel(DM.getMappingIDLabels().get(i)[f])); /* If several output files are given, write only one label*/
+                                    bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[f])); /* If several output files are given, write only one label*/
                                 } else {
                                     for (int m=0; m < strLabels.length; m++) {
-                                        bw.write(csvSep + editLabel(DM.getMappingIDLabels().get(i)[m]));
+                                        bw.write(";" + editLabel(DM.getMappingIDLabels().get(i)[m]));
                                     }
                                 }
                             }

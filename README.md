@@ -1,5 +1,5 @@
 # 
-<img src="http://www.fim.uni-passau.de/fileadmin/_processed_/csm_openXBOW-text_b9c0d8db03.png" alt="openXBOW" width="600" />
+<img src="openXBOW-text.png" alt="openXBOW" width="600" />
 
 **openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit**  
 
@@ -15,9 +15,9 @@ For more information, please visit the official websites:
 http://sewaproject.eu  
 http://ihearu.eu  
 
-(C) 2016-2019, published under GPL v3, please check the file LICENSE.txt for details.
-Maximilian Schmitt, Björn Schuller: University of Passau.  
-Contact: maximilian.schmitt@informatik.uni-augsburg.de  
+(C) 2016-2020, published under GPL v3, please check the file LICENSE.txt for details.
+Maximilian Schmitt, Björn Schuller: University of Passau, University of Augsburg.  
+Contact: maximilian.schmitt@mailbox.org  
 
 
 # Citing
@@ -307,5 +307,5 @@ Further improvement of the accuracy can be obtained by optimising the parameters
 
 
 **Thank you for your interest and reading this tutorial!**  
-In case you have any questions, be kindly invited to contact Maximilian Schmitt, University of Passau/University of Augsburg: maximilian.schmitt@informatik.uni-augsburg.de
+In case you have any questions, be kindly invited to contact Maximilian Schmitt, University of Passau: maximilian.schmitt@uni-passau.de
 

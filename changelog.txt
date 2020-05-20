@@ -1,0 +1,17 @@
+﻿
+Changes:
+
+==============================
+
+Version 1.1 (previous version 1.0) - May 2020:
+
+-Version 1.0 has been shifted to "archive/"
+
+-Two new options concerning the CSV output have been added:
+ 1) -csvHeader can be used to print a header line for CSV output files.
+ 2) -csvSep lets users choose a separator different from the default semicolon for CSV output files.
+ For example, to make the output compatible with the default pandas CSV format, use "-o output.csv -csvHeader -csvSep ,".
+
+-A JUnitTest has been added, allowing to run an automated regression test, checking the most common options. It is recommended to run this test after modifying the source code, to check if the output is compatible with the output of the tool before the change, given the default config.
+
+==============================

@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -32,7 +31,7 @@ import openxbow.io.WriterIndex;
 public class OpenXBOW {
     
     public static void main(String[] args) {
-        String VERSION = "1.1";
+        String VERSION = "1.0";
         
         /* Objects */
         Reader        reader     = null;
@@ -115,7 +114,7 @@ public class OpenXBOW {
             /* Write output BoW files */
             if (!options.outputFileName.isEmpty()) {
                 System.out.println("Writing output ...");
-                writer = new Writer(options.outputFileName, DM, options.csvHeader, options.csvSep, options.bWriteName, options.bWriteTimeStamp, options.bNoWriteLabels, options.arffLabels, options.bAppend);
+                writer = new Writer(options.outputFileName, DM, options.bWriteName, options.bWriteTimeStamp, options.bNoWriteLabels, options.arffLabels, options.bAppend);
                 writer.writeFile(hyperBag);
             }
             

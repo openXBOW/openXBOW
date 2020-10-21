@@ -92,19 +92,12 @@ public class HyperCodebook {
     public boolean loadHyperCodebook(String fileName) {
         BufferedReader br = null;
         
-        String   thisLine = null;
-        String[] content  = null;
+        String   thisLine         = null;
+        String[] content          = null;
         
-        List<Integer> numAssignments   = new ArrayList<Integer>();
-        List<Float>   gaussianEncoding = new ArrayList<Float>();
-        List<Integer> gmmEncoding      = new ArrayList<Integer>();
-        List<Float>   offCodewords     = new ArrayList<Float>();
-        
-        /* Initialise "placeholder" for symbolic codebook at index 0. */
-        numAssignments.add(0);
-        gaussianEncoding.add(0.0f);
-        gmmEncoding.add(0);
-        offCodewords.add(0.0f);
+        int[]   numAssignments   = new int [10];    // TODO: Should be more generic
+        float[] gaussianEncoding = new float [10];  // TODO: Should be more generic
+        float[] offCodewords     = new float [10];  // TODO: Should be more generic
         
         try {
             File inputFile = new File(fileName);
@@ -162,31 +155,19 @@ public class HyperCodebook {
                     
                     ((CodebookText)codebooks.get(0)).setCodebook(codewords, stopWords, nGram, nCharGram);
                 }
-                else if (content[0].equals("codebookNumeric") || content[0].equals("codebookNumericNGram") || content[0].equals("codebookNumericGMM")) {
+                else if (content[0].equals("codebookNumeric") || content[0].equals("codebookNumericNGram")) {
                     boolean bNumGrams = false;
                     if (content[0].equals("codebookNumericNGram")) {
                         bNumGrams = true;
                     }
-                    boolean bGMMEncoding = false;
-                    if (content[0].equals("codebookNumericGMM")) {
-                        bGMMEncoding = true;
-                    }
                     
                     /* Parse the given header line and codewords */
                     content = br.readLine().split(";");
-                    int numCodewords = Integer.parseInt(content[0]);
-                    int numFeatures  = Integer.parseInt(content[1]);
-                    if (bGMMEncoding) {
-                        numAssignments.add(0);
-                        gaussianEncoding.add(0.0f);
-                        gmmEncoding.add( Integer.parseInt(content[2]) );
-                        offCodewords.add(0.0f);
-                    } else {
-                        numAssignments.add( Integer.parseInt(content[2]) );
-                        gaussianEncoding.add( Float.parseFloat(content[3]) );
-                        gmmEncoding.add(0);
-                        offCodewords.add( Float.parseFloat(content[4]) );
-                    }
+                    int numCodewords               = Integer.parseInt(content[0]);
+                    int numFeatures                = Integer.parseInt(content[1]);
+                    numAssignments[featureClass]   = Integer.parseInt(content[2]);
+                    gaussianEncoding[featureClass] = Float.parseFloat(content[3]);
+                    offCodewords[featureClass]     = Float.parseFloat(content[4]);
                     
                     float[][] codewords = new float[numCodewords][numFeatures];
                     for (int w=0; w < numCodewords; w++) {
@@ -200,25 +181,19 @@ public class HyperCodebook {
                     int[][] unigrams = null;
                     int[][] bigrams  = null;
                     int[][] trigrams = null;
-                    
-                    /* In any case, expand the config list */
-                    options.bUnigram.add(false);
-                    options.bBigram.add(false);
-                    options.bTrigram.add(false);
-                    
                     if (bNumGrams) {
                         List<int[][]> listGrams = readUniBiTrigrams(br);
                         unigrams = listGrams.get(0);
                         bigrams  = listGrams.get(1);
                         trigrams = listGrams.get(2);
                         if (unigrams != null) {
-                            options.bUnigram.set(featureClass, true);
+                            options.bUnigram[featureClass] = true;
                         }
                         if (bigrams != null) {
-                            options.bBigram.set(featureClass, true);
+                            options.bBigram[featureClass] = true;
                         }
                         if (trigrams != null) {
-                            options.bTrigram.set(featureClass, true);
+                            options.bTrigram[featureClass] = true;
                         }
                     }
                     
@@ -234,27 +209,6 @@ public class HyperCodebook {
                     
                     if (bNumGrams) {
                         thisBook.setNGramCodebooks(unigrams, bigrams, trigrams);
-                    }
-                    
-                    /* GMM encoding */
-                    if (bGMMEncoding) {
-                        float[] mixtures = new float[numCodewords];
-                        for (int w=0; w < numCodewords; w++) {
-                            mixtures[w] = Float.parseFloat(br.readLine());
-                        }
-                        float[][] covariances = new float[numCodewords][numFeatures];
-                        for (int w=0; w < numCodewords; w++) {
-                            content = br.readLine().split(";");
-                            for (int k=0; k < numFeatures; k++) {
-                                covariances[w][k] = Float.parseFloat(content[k]);
-                            }
-                        }
-                        
-                        CodebookNumericGMM cbGMM = new CodebookNumericGMM(thisBook.config);
-                        cbGMM.setMixtureWeights(mixtures);
-                        cbGMM.setCentroids(codewords);
-                        cbGMM.setCovariances(covariances);
-                        thisBook.setGMMCodebook(cbGMM);
                     }
                 }
             }
@@ -273,7 +227,6 @@ public class HyperCodebook {
         
         options.numAssignments   = numAssignments;
         options.gaussianEncoding = gaussianEncoding;
-        options.gmmEncoding      = gmmEncoding;
         options.offCodewords     = offCodewords;
         
         return true;
@@ -395,27 +348,19 @@ public class HyperCodebook {
                     int numCodewords = codewords.length;
                     int numFeatures  = codewords[0].length;
                     
-                    if (options.bUnigram.get(this.getIndexBook(book)) 
-                     || options.bBigram.get(this.getIndexBook(book)) 
-                     || options.bTrigram.get(this.getIndexBook(book))) {
+                    if (options.bUnigram[this.getIndexBook(book)] 
+                     || options.bBigram[this.getIndexBook(book)] 
+                     || options.bTrigram[this.getIndexBook(book)]) 
+                    {
                         bw.write("codebookNumericNGram"); bw.newLine();
-                    }
-                    else if (options.gmmEncoding.get(this.getIndexBook(book))>0) {
-                        bw.write("codebookNumericGMM"); bw.newLine();
-                    }
-                    else {
+                    } else {
                         bw.write("codebookNumeric"); bw.newLine();
                     }
-                    
                     bw.write(String.valueOf(numCodewords) + ";" 
-                            + String.valueOf(numFeatures));
-                    if (options.gmmEncoding.get(this.getIndexBook(book))>0) {
-                        bw.write(";" + String.valueOf(options.gmmEncoding.get(this.getIndexBook(book))));
-                    } else {
-                        bw.write(";" + String.valueOf(options.numAssignments.get(this.getIndexBook(book)))  
-                               + ";" + String.valueOf(options.gaussianEncoding.get(this.getIndexBook(book)))
-                               + ";" + String.valueOf(options.offCodewords.get(this.getIndexBook(book))));
-                    }
+                            + String.valueOf(numFeatures) + ";" 
+                            + String.valueOf(options.numAssignments[this.getIndexBook(book)]) + ";" 
+                            + String.valueOf(options.gaussianEncoding[this.getIndexBook(book)]) + ";"
+                            + String.valueOf(options.offCodewords[this.getIndexBook(book)]));
                     bw.newLine();
                     
                     /* Write codewords */
@@ -427,34 +372,18 @@ public class HyperCodebook {
                     }
                     
                     /* NumericNGrams */
-                    if (options.bUnigram.get(this.getIndexBook(book)) 
-                     || options.bBigram.get(this.getIndexBook(book)) 
-                     || options.bTrigram.get(this.getIndexBook(book))) 
+                    if (options.bUnigram[this.getIndexBook(book)] 
+                     || options.bBigram[this.getIndexBook(book)] 
+                     || options.bTrigram[this.getIndexBook(book)]) 
                     {
-                        String strGrams = getNGramHeaderString(options.bUnigram.get(this.getIndexBook(book)),
-                                                               options.bBigram.get(this.getIndexBook(book)),
-                                                               options.bTrigram.get(this.getIndexBook(book)));
+                        String strGrams = getNGramHeaderString(options.bUnigram[this.getIndexBook(book)],
+                                                               options.bBigram[this.getIndexBook(book)],
+                                                               options.bTrigram[this.getIndexBook(book)]);
                         bw.write(String.valueOf(strGrams));
                         bw.newLine();
                     }
                     
-                    /* GMM encoding: Write mixture weights and covariances (only main diagonal) */
-                    if (options.gmmEncoding.get(this.getIndexBook(book))>0) {
-                        float[]   mixtures    = book.getGMMCodebook().getMixtureWeights();
-                        float[][] covariances = book.getGMMCodebook().getCovariances();
-                        for (int w=0; w < numCodewords; w++) {
-                            bw.write(String.valueOf(mixtures[w]));
-                            bw.newLine();
-                        }
-                        for (int w=0; w < numCodewords; w++) {
-                            for (int k=0; k < numFeatures; k++) {
-                                bw.write(String.valueOf(covariances[w][k]));  /* Only entries on the main diagonal */
-                                if (k < numFeatures-1) { bw.write(";"); }
-                            } bw.newLine();
-                        }
-                    }
-                    
-                    if (options.bUnigram.get(this.getIndexBook(book)))
+                    if (options.bUnigram[this.getIndexBook(book)])
                     {
                         int[][] unigrams = book.getUnigrams();
                         numCodewords = unigrams.length; 
@@ -467,7 +396,7 @@ public class HyperCodebook {
                             } bw.newLine();
                         }
                     }
-                    if (options.bBigram.get(this.getIndexBook(book)))
+                    if (options.bBigram[this.getIndexBook(book)])
                     {
                         int[][] bigrams = book.getBigrams();
                         numCodewords = bigrams.length;
@@ -480,7 +409,7 @@ public class HyperCodebook {
                             } bw.newLine();
                         }
                     }
-                    if (options.bTrigram.get(this.getIndexBook(book)))
+                    if (options.bTrigram[this.getIndexBook(book)])
                     {
                         int[][] trigrams = book.getTrigrams();
                         numCodewords = trigrams.length;

@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -61,14 +60,10 @@ public class HyperBag {
                 subBag.generateBoW();
             } else {
                 int index = hyperBook.getIndexBook(subBag.getCodebook());
-                if (!options.outputIFileName.isEmpty() || options.bUnigram.get(index) || options.bBigram.get(index) || options.bTrigram.get(index)) {
-                    subBag.generateBoF(options.numAssignments.get(index), options.gaussianEncoding.get(index), options.offCodewords.get(index), true);
-                } 
-                else if (options.gmmEncoding.get(index)>0) {
-                    subBag.generateGMM(options.gmmEncoding.get(index));
-                }
-                else {
-                    subBag.generateBoF(options.numAssignments.get(index), options.gaussianEncoding.get(index), options.offCodewords.get(index), false);
+                if (!options.outputIFileName.isEmpty() || options.bUnigram[index] || options.bBigram[index] || options.bTrigram[index]) {
+                    subBag.generateBoF(options.numAssignments[index], options.gaussianEncoding[index], options.offCodewords[index], true);
+                } else {
+                    subBag.generateBoF(options.numAssignments[index], options.gaussianEncoding[index], options.offCodewords[index], false);
                 }
             }
         }
@@ -76,14 +71,14 @@ public class HyperBag {
         /* Numeric N-grams */
         for (Bag bagi : subBags) {
             if (bagi.getCodebook() instanceof CodebookNumeric 
-             &&  (options.bUnigram.get(hyperBook.getIndexBook(bagi.getCodebook()))
-               || options.bBigram.get(hyperBook.getIndexBook(bagi.getCodebook()))
-               || options.bTrigram.get(hyperBook.getIndexBook(bagi.getCodebook()))))
+             &&  (options.bUnigram[hyperBook.getIndexBook(bagi.getCodebook())]
+               || options.bBigram[hyperBook.getIndexBook(bagi.getCodebook())]
+               || options.bTrigram[hyperBook.getIndexBook(bagi.getCodebook())]))
             {
                 CodebookNumeric book = (CodebookNumeric) bagi.getCodebook();
-                boolean bUni = options.bUnigram.get(hyperBook.getIndexBook(bagi.getCodebook()));
-                boolean bBi  = options.bBigram.get(hyperBook.getIndexBook(bagi.getCodebook()));
-                boolean bTri = options.bTrigram.get(hyperBook.getIndexBook(bagi.getCodebook()));
+                boolean bUni = options.bUnigram[hyperBook.getIndexBook(bagi.getCodebook())];
+                boolean bBi  = options.bBigram[hyperBook.getIndexBook(bagi.getCodebook())];
+                boolean bTri = options.bTrigram[hyperBook.getIndexBook(bagi.getCodebook())];
                 
                 NumGrams ngBag = new NumGrams(DM,bagi,book);
                 

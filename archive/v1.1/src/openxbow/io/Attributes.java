@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class Attributes {
     private boolean bAttributesSpecified = false;
@@ -40,7 +38,7 @@ public class Attributes {
     private List<Integer> indexesRemove = null;
     
     
-    public Attributes (String strAttributes, String strAttributesAlt) {
+    public Attributes (String strAttributes) {
         indexesAttributeClass = new HashMap<Integer,List<Integer>>();
         indexesLabels = new ArrayList<Integer>();
         indexesRemove = new ArrayList<Integer>();
@@ -48,10 +46,6 @@ public class Attributes {
         if (!strAttributes.isEmpty()) {
             bAttributesSpecified = true;
             parseInputString(strAttributes);
-        }
-        else if (!strAttributesAlt.isEmpty()) {  /* Only relevant if strAttributes is not defined. */
-            bAttributesSpecified = true;
-            parseInputStringAlt(strAttributesAlt);
         }
     }
     
@@ -75,15 +69,6 @@ public class Attributes {
     }
     public Map<Integer,List<Integer>> getIndexesAttributeClass() {
         return indexesAttributeClass;
-    }
-    public int getNumberOfFeatureClasses() {
-        int num = 1;  /* A symbolic feature class is always taken into account, even if not present in indexesAttributeClass */
-        for (Entry<Integer,List<Integer>> e : indexesAttributeClass.entrySet()) {
-            if (e.getKey()>0) {
-                num++;
-            }
-        }
-        return num;
     }
     
     public void addAttributeARFF(String[] line, boolean bTimeStamp) {
@@ -247,159 +232,6 @@ public class Attributes {
                     indexesAttributeClass.get(featureType).add(numAttributes);
                     numFeatures++;
                     numAttributes++;
-                }
-            }
-            
-            m++;
-        }
-    }
-    
-    
-    private void parseInputStringAlt(String strAttributes) {
-        numAttributes = 0;
-        numFeatures   = 0;
-        
-        List<Integer> indexesNumericFeatures = new ArrayList<Integer>();
-        
-        /* Set indexes of name, time, labels and attributes to be removed and features in attribute list */
-        int m=0;  /* Index within the attributes string */
-        
-        while (m < strAttributes.length() && strAttributes.toLowerCase().charAt(m)!='_') {
-            if (strAttributes.toLowerCase().charAt(m)=='n') {
-                indexName = numAttributes;
-                numAttributes++;
-            } else if (strAttributes.toLowerCase().charAt(m)=='t') {
-                indexTime = numAttributes;
-                numAttributes++;
-            } else if (strAttributes.toLowerCase().charAt(m)=='c' || strAttributes.charAt(m)=='l') {
-                indexesLabels.add(numAttributes);
-                numAttributes++;
-            } else if (strAttributes.toLowerCase().charAt(m)=='r') {
-                if (m+1 < strAttributes.length() && strAttributes.charAt(m+1)=='[') {
-                    /* Multiple features */
-                    m = m + 2;
-                    String strNumIndexes = "";
-                    int    intNumIndexes = 0;
-                    while (strAttributes.charAt(m)!=']') {  /* Parse number of subsequent features */
-                        strNumIndexes = strNumIndexes.concat(strAttributes.substring(m,m+1));
-                        m++;
-                    }
-                    intNumIndexes = Integer.parseInt(strNumIndexes);
-                    for (int c=1; c<=intNumIndexes; c++) {
-                        indexesRemove.add(numAttributes);
-                        numAttributes++;
-                    }
-                } else {
-                    indexesRemove.add(numAttributes);
-                    numAttributes++;
-                }
-            } else if (strAttributes.toLowerCase().charAt(m)=='m') {  
-                if (m+1 < strAttributes.length() && strAttributes.charAt(m+1)=='[') {
-                    /* Multiple features */
-                    m = m + 2;
-                    String strNumIndexes = "";
-                    int    intNumIndexes = 0;
-                    while (strAttributes.charAt(m)!=']') {  /* Parse number of subsequent features */
-                        strNumIndexes = strNumIndexes.concat(strAttributes.substring(m,m+1));
-                        m++;
-                    }
-                    intNumIndexes = Integer.parseInt(strNumIndexes);
-                    for (int c=1; c<=intNumIndexes; c++) {
-                        indexesNumericFeatures.add(numAttributes);
-                        numAttributes++;
-                    }
-                } else {
-                    indexesNumericFeatures.add(numAttributes);
-                    numAttributes++;
-                }
-            } else if (Character.isDigit(strAttributes.charAt(m))) {
-                int featureType = Character.getNumericValue(strAttributes.charAt(m));
-                if (featureType!=0) {
-                    System.err.println("Error (Attributes): Only 0 (symbolic features) may be specified in -attributesAlt. Use 'm' to specify numeric features.");
-                }
-                if (!indexesAttributeClass.containsKey(featureType)) {
-                    indexesAttributeClass.put(featureType, new ArrayList<Integer>());
-                }
-                
-                if (m+1 < strAttributes.length() && strAttributes.charAt(m+1)=='[') {
-                    /* Multiple features */
-                    m = m + 2;
-                    String strNumIndexes = "";
-                    int    intNumIndexes = 0;
-                    while (strAttributes.charAt(m)!=']') {  /* Parse number of subsequent features */
-                        strNumIndexes = strNumIndexes.concat(strAttributes.substring(m,m+1));
-                        m++;
-                    }
-                    intNumIndexes = Integer.parseInt(strNumIndexes);
-                    for (int c=1; c<=intNumIndexes; c++) {
-                        indexesAttributeClass.get(featureType).add(numAttributes);
-                        numFeatures++;
-                        numAttributes++;
-                    }
-                } else {
-                    indexesAttributeClass.get(featureType).add(numAttributes);
-                    numFeatures++;
-                    numAttributes++;
-                }
-            }
-            
-            m++;
-        }
-        
-        /* Now, construct the numeric codebooks. */
-        if (strAttributes.length()>=m && strAttributes.toLowerCase().charAt(m)!='_') {
-            System.err.println("Error (Attributes): Please check the format of -attributesAlt carefully.");
-        }
-        
-        m++;
-        
-        int featureType = 0;
-        while (m < strAttributes.length()) {
-            if (strAttributes.toLowerCase().charAt(m)!='[') {
-                System.err.println("Error (Attributes): Please check the format of -attributesAlt carefully.");
-            }
-            m++;
-            featureType++;
-            while (strAttributes.charAt(m)!=']') {
-                if (strAttributes.charAt(m)=='+') {
-                    m++;
-                    continue;  /* + can just be ignored */
-                }
-                String strIndex = "";
-                int    intIndex = 0;
-                while (strAttributes.charAt(m)!='+' && strAttributes.charAt(m)!='-' && strAttributes.charAt(m)!=']') {
-                    strIndex = strIndex.concat(strAttributes.substring(m,m+1));
-                    m++;
-                }
-                intIndex = Integer.parseInt(strIndex);
-                if (intIndex==0) {
-                    System.err.println("Error (Attributes): Feature index max not be 0. Please check the format of -attributesAlt carefully.");
-                }
-                if (!indexesAttributeClass.containsKey(featureType)) {
-                    indexesAttributeClass.put(featureType, new ArrayList<Integer>());
-                }
-                indexesAttributeClass.get(featureType).add(indexesNumericFeatures.get(intIndex-1));
-                
-                /* Add range */
-                if (strAttributes.charAt(m)=='-') {
-                    int intIndexStart = intIndex;
-                    m++;
-                    strIndex = "";
-                    intIndex = 0;
-                    while (strAttributes.charAt(m)!='+' && strAttributes.charAt(m)!=']') {
-                        if (strAttributes.charAt(m)=='-') {
-                            System.err.println("Error (Attributes): Please check the format of -attributesAlt carefully.");
-                        }
-                        strIndex = strIndex.concat(strAttributes.substring(m,m+1));
-                        m++;
-                    }
-                    int intIndexEnd = Integer.parseInt(strIndex);
-                    if (intIndexEnd<intIndexStart) {
-                        System.err.println("Error (Attributes): Please check the format of -attributesAlt carefully.");
-                    }
-                    for (int c=intIndexStart+1; c<=intIndexEnd; c++) {
-                        indexesAttributeClass.get(featureType).add(indexesNumericFeatures.get(c-1));
-                    }
                 }
             }
             

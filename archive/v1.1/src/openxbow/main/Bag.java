@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -26,7 +25,6 @@ import java.util.Map;
 
 import openxbow.codebooks.Codebook;
 import openxbow.codebooks.CodebookNumeric;
-import openxbow.codebooks.CodebookNumericGMM;
 import openxbow.codebooks.CodebookText;
 import openxbow.nlp.String2WordVector;
 
@@ -185,145 +183,6 @@ public class Bag {
             }
         }
     }
-    
-    
-    public void generateGMM(int gmmMode) {
-        /* gmmMode: 0 (not allowed), 1: WITHOUT priors, 2: WITH priors */
-        assert(gmmMode>0 && gmmMode<=2);
-        CodebookNumericGMM bookGMM = ((CodebookNumeric)book).getGMMCodebook();
-        float[]   mixtures    = bookGMM.getMixtureWeights();
-        float[][] centroids   = bookGMM.getCentroids();
-        float[][] covariances = bookGMM.getCovariances();
-        
-        int sizeCodebook = mixtures.length;
-        int numFeatures  = indexFeatures.size();
-        
-        Map<Integer,List<Integer>> mapFrameIDs = DM.getMappingFrameIDs();
-        bof = new float[DM.getNumIDs()][sizeCodebook];
-        
-        /* Prepare mixture weights with mode */
-        float[] mixturesBook = mixtures;
-        mixtures = new float[sizeCodebook];
-        for (int j=0; j < sizeCodebook; j++) {
-            if (gmmMode==1) {
-                mixtures[j] = 1.0f / sizeCodebook;  /* uniform weight */
-            } else {  /* gmmMode==1 */
-                mixtures[j] = mixturesBook[j];  /* just copy */
-            }
-        }
-        
-        /* Precompute some values to make assignment faster */
-        float[] prefactorsGaussianProb = new float[sizeCodebook];
-        for (int j=0; j < sizeCodebook; j++) {
-            prefactorsGaussianProb[j] = mixtures[j] * computePrefactorComponent(covariances[j]);
-        }
-        float[][] invCovariances = new float[sizeCodebook][numFeatures];
-        for (int j=0; j < sizeCodebook; j++) {
-            for (int m=0; m < numFeatures; m++) {
-                invCovariances[j][m] = 1.0f / covariances[j][m]; 
-            }
-        }
-        float[] fv_unbiased = new float[numFeatures];
-        
-        /* Get probs */
-        int frameIndex = 0;
-        
-        for (Object[] frame : data) {
-            /* Temporary variables */
-            float[] features = new float[numFeatures];   /* TODO: initialise before? */
-            float[] prob     = new float[sizeCodebook];  /* TODO: initialise before? */
-            float   sumProb  = 0.0f;
-            
-            /* Convert features to float array */
-            int kn = 0;
-            for (int k=0; k < numFeatures; k++) {
-                features[kn] = (float) frame[indexFeatures.get(k)];
-                kn++;
-            }
-            
-            /* Compute probability for each cluster (mixture component) */
-            for (int j=0; j < sizeCodebook; j++) {
-                //prob[j] = computeGaussianProb(features, mixtures[j], centroids[j], covariances[j]);
-                prob[j] = computeGaussianProbFast(features, centroids[j], invCovariances[j], prefactorsGaussianProb[j], fv_unbiased);
-                sumProb += prob[j];
-            }
-            /* Normalize */
-            for (int j=0; j < sizeCodebook; j++) {
-                prob[j] /= sumProb;
-            }
-            
-            /* Assign values */
-            for (int id=0; id < mapFrameIDs.get(frameIndex).size(); id++) {
-                for (int j=0; j < sizeCodebook; j++) {
-                    bof[mapFrameIDs.get(frameIndex).get(id)][j] += prob[j];
-                }
-            }
-            
-            frameIndex++;
-        }
-        
-        /* Make sure that we do not have a bag of only zeros */
-        for (int id=0; id < bof.length; id++) {
-            if (DM.getNumFrames().get(id)==0) {
-                for (int w=0; w < bof[0].length; w++) {
-                    bof[id][w] = 0.001f;
-                }
-            }
-        }
-    }
-    
-    
-    /* NOTE: This function should be aligned with the corresponding function in openxbow.codebooks.CodebookNumericGMM */
-    private float computePrefactorComponent(float[] covariances) {
-        int   numFeatures = covariances.length;
-        float determinant = 1.0f;
-        for (int m=0; m < numFeatures; m++) {
-            determinant *= covariances[m];
-        }
-        determinant += Float.MIN_NORMAL;
-        return (float) (1.0f / Math.sqrt( Math.pow(2.0f * Math.PI, numFeatures) * determinant ));        
-    }
-    
-    
-    /* NOTE: This function should be aligned with the corresponding function in openxbow.codebooks.CodebookNumericGMM */
-    private float computeGaussianProbFast(float[] feature_vector, float[] centroid, float[] invCovariances, float prefactor, float[] fv_unbiased) {
-        int numFeatures = feature_vector.length;
-        
-        float exponent = 0.0f;
-        for (int m=0; m < numFeatures; m++) {
-            // (feature_vector[m] - centroid[m]) is the unbiased feature vector; (a-b) * (a-b) is faster than Math.pow(a-b,2)
-            exponent += (feature_vector[m] - centroid[m]) * (feature_vector[m] - centroid[m]) * invCovariances[m];  /* inverse of the covariance "matrix" */
-        }
-        
-        float prob = prefactor * (float) Math.exp(-0.5f * exponent);
-        return prob + Float.MIN_NORMAL;
-    }
-    
-    
-//    /* NOTE: This function should be aligned with the corresponding function in openxbow.codebooks.CodebookNumericGMM */
-//    private float computeGaussianProb(float[] feature_vector, float mixture_weight, float[] centroid, float[] covariances) {
-//        int numFeatures = feature_vector.length;
-//        
-//        float determinant = 1.0f;
-//        for (int m=0; m < numFeatures; m++) {
-//            determinant *= covariances[m];
-//        }
-//        determinant += Float.MIN_NORMAL;
-//        float prefactor = (float) (1.0f / Math.sqrt( Math.pow(2.0f * Math.PI, numFeatures) * determinant ));
-//        
-//        float[] fv_unbiased = new float[feature_vector.length];
-//        for (int m=0; m < numFeatures; m++) {
-//            fv_unbiased[m] = feature_vector[m] - centroid[m];
-//        }
-//        
-//        float exponent = 0.0f;
-//        for (int m=0; m < numFeatures; m++) {
-//            exponent += fv_unbiased[m] * fv_unbiased[m] / covariances[m];  /* inverse of the covariance "matrix" */
-//        }
-//        
-//        float prob = mixture_weight * prefactor * (float) Math.exp(-0.5f * exponent);
-//        return prob + Float.MIN_NORMAL;
-//    }
     
     
     public Codebook getCodebook() {

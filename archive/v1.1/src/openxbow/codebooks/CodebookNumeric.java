@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -35,8 +34,6 @@ public class CodebookNumeric extends Codebook {
     private int[][] unigrams = null;
     private int[][] bigrams  = null;
     private int[][] trigrams = null;
-    
-    private CodebookNumericGMM cbGMM = null;
     
     public CodebookNumeric(CodebookConfig config) {
         super(config);
@@ -193,26 +190,6 @@ public class CodebookNumeric extends Codebook {
                 else if (config.generationMethod==cbgenmethod.randompp) {
                     centroidsClass = randomSamplingPlusPlus(train.trainingDataSupervised.get(c),numClustersPerClass,config.randomSeed);
                 }
-                else if (config.generationMethod==cbgenmethod.em) {
-                	float[][] centroidsInitial = randomSampling(train.trainingDataSupervised.get(c),numClustersPerClass,config.randomSeed);
-                	cbGMM = new CodebookNumericGMM(config);
-                    codewords = cbGMM.generateCodebook(train.trainingDataSupervised.get(c),numClustersPerClass,centroidsInitial);
-                }
-                else if (config.generationMethod==cbgenmethod.empp) {
-                	float[][] centroidsInitial = randomSamplingPlusPlus(train.trainingDataSupervised.get(c),numClustersPerClass,config.randomSeed);
-                	cbGMM = new CodebookNumericGMM(config);
-                    codewords = cbGMM.generateCodebook(train.trainingDataSupervised.get(c),numClustersPerClass,centroidsInitial);
-                }
-                else if (config.generationMethod==cbgenmethod.emkm) {
-                	float[][] centroidsInitial = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,false,config.randomSeed,false);
-                	cbGMM = new CodebookNumericGMM(config);
-                    codewords = cbGMM.generateCodebook(train.trainingDataSupervised.get(c),numClustersPerClass,centroidsInitial);
-                }
-                else if (config.generationMethod==cbgenmethod.emkmpp) {
-                	float[][] centroidsInitial = kMeans(train.trainingDataSupervised.get(c),numClustersPerClass,true,config.randomSeed,false);
-                	cbGMM = new CodebookNumericGMM(config);
-                    codewords = cbGMM.generateCodebook(train.trainingDataSupervised.get(c),numClustersPerClass,centroidsInitial);
-                }
                 else {
                     System.err.println("Error: Codebook generation method unknown.");
                 }
@@ -249,26 +226,6 @@ public class CodebookNumeric extends Codebook {
             }
             else if (config.generationMethod==cbgenmethod.randompp) {
                 codewords = randomSamplingPlusPlus(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
-            }
-            else if (config.generationMethod==cbgenmethod.em) {
-            	float[][] centroidsInitial = randomSampling(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
-            	cbGMM = new CodebookNumericGMM(config);
-                codewords = cbGMM.generateCodebook(train.trainingData,config.sizeCodebookInitial,centroidsInitial);
-            }
-            else if (config.generationMethod==cbgenmethod.empp) {
-            	float[][] centroidsInitial = randomSamplingPlusPlus(train.trainingData,config.sizeCodebookInitial,config.randomSeed);
-            	cbGMM = new CodebookNumericGMM(config);
-            	codewords = cbGMM.generateCodebook(train.trainingData,config.sizeCodebookInitial,centroidsInitial);
-            }
-            else if (config.generationMethod==cbgenmethod.emkm) {
-            	float[][] centroidsInitial = kMeans(train.trainingData,config.sizeCodebookInitial,false,config.randomSeed,false);
-            	cbGMM = new CodebookNumericGMM(config);
-            	codewords = cbGMM.generateCodebook(train.trainingData,config.sizeCodebookInitial,centroidsInitial);
-            }
-            else if (config.generationMethod==cbgenmethod.emkmpp) {
-            	float[][] centroidsInitial = kMeans(train.trainingData,config.sizeCodebookInitial,true,config.randomSeed,false);
-            	cbGMM = new CodebookNumericGMM(config);
-            	codewords = cbGMM.generateCodebook(train.trainingData,config.sizeCodebookInitial,centroidsInitial);
             }
             else if (config.generationMethod==cbgenmethod.generic) {
                 CodebookNumericGeneric cbGeneric = new CodebookNumericGeneric(config);
@@ -650,13 +607,6 @@ public class CodebookNumeric extends Codebook {
     }
     public int[][] getTrigrams() {
         return trigrams;
-    }
-    
-    public CodebookNumericGMM getGMMCodebook() {
-    	return this.cbGMM;
-    }
-    protected void setGMMCodebook(CodebookNumericGMM cbGMM) {
-    	this.cbGMM = cbGMM;
     }
     
     public void setCodebook(float[][] codewords) {

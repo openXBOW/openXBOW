@@ -59,10 +59,10 @@ public class BagOfFeaturesTest {
         Reader OWReader1LARF = null;
         Reader OWReader1LCSV = null;
         
-        OWReader1ARF = new Reader("JUnitTestData/random1.arff","","",false);
-        OWReader1CSV = new Reader("JUnitTestData/random1.csv","","",false);
-        OWReader1LARF = new Reader("JUnitTestData/random1_wLabels.arff","","",false);
-        OWReader1LCSV = new Reader("JUnitTestData/random1_wLabels.csv","","",false);
+        OWReader1ARF = new Reader("JUnitTestData/random1.arff","",false);
+        OWReader1CSV = new Reader("JUnitTestData/random1.csv","",false);
+        OWReader1LARF = new Reader("JUnitTestData/random1_wLabels.arff","",false);
+        OWReader1LCSV = new Reader("JUnitTestData/random1_wLabels.csv","",false);
         
         OWReader1ARF.readFile();
         OWReader1CSV.readFile();
@@ -112,8 +112,8 @@ public class BagOfFeaturesTest {
         
         Reader OWReader2ARF = null;
         Reader OWReader2CSV = null;
-        OWReader2ARF = new Reader("JUnitTestData/random2.arff","","",true);
-        OWReader2CSV = new Reader("JUnitTestData/random2.csv","","",true);
+        OWReader2ARF = new Reader("JUnitTestData/random2.arff","",true);
+        OWReader2CSV = new Reader("JUnitTestData/random2.csv","",true);
         OWReader2ARF.readFile();
         OWReader2CSV.readFile();
         
@@ -146,11 +146,11 @@ public class BagOfFeaturesTest {
         System.out.print("Test: Run with numeric input file and different configs, e.g., standardization, norm, idf, ...");
         
         /* Options */
-        Options options           = new Options();
-        options.bLogWeighting     = true;
-        options.bIDFWeighting     = true;
-        options.numAssignments.add(0);
-        options.numAssignments.add(1);
+        Options options = new Options();
+        options.bLogWeighting = true;
+        options.bIDFWeighting = true;
+        options.numAssignments    = new int [10];
+        options.numAssignments[1] = 1;
         options.bStandardizeInput = true;
         options.bNormalizeInput   = false;
         
@@ -179,13 +179,6 @@ public class BagOfFeaturesTest {
         options.cbConfig.add(1,conf);
         
         hyperBook.generateCodebook();
-        
-        options.bUnigram.add(false); options.bUnigram.add(false);
-        options.bBigram.add(false); options.bBigram.add(false);
-        options.bTrigram.add(false); options.bTrigram.add(false);
-        options.gmmEncoding.add(0); options.gmmEncoding.add(0);
-        options.gaussianEncoding.add(0.0f); options.gaussianEncoding.add(0.0f);
-        options.offCodewords.add(0.0f); options.offCodewords.add(0.0f);
         
         options.normalizeBag = 1;  /* Test three normalization options */
         hyperBag.generateBag();
@@ -240,21 +233,14 @@ public class BagOfFeaturesTest {
         System.out.print("Test: Run with mixed numeric and text input file ...");
         
         /* Options */
-        Options options           = new Options();
-        options.bLogWeighting     = false;
-        options.bIDFWeighting     = false;
-        options.numAssignments.add(0);
-        options.numAssignments.add(2);
-        options.bRemoveLowEnergy  = false;
+        Options options = new Options();
+        options.bLogWeighting = false;
+        options.bIDFWeighting = false;
+        options.numAssignments    = new int [10];
+        options.numAssignments[1] = 2;
+        options.bRemoveLowEnergy = false;
         options.bStandardizeInput = false;
-        options.bNormalizeInput   = false;
-        
-        options.bUnigram.add(false); options.bUnigram.add(false);
-        options.bBigram.add(false); options.bBigram.add(false);
-        options.bTrigram.add(false); options.bTrigram.add(false);
-        options.gmmEncoding.add(0); options.gmmEncoding.add(0);
-        options.gaussianEncoding.add(0.0f); options.gaussianEncoding.add(0.0f);
-        options.offCodewords.add(0.0f); options.offCodewords.add(0.0f);
+        options.bNormalizeInput = false;
         
         /* Codebook configurations 1 */
         CodebookConfig conf = null;
@@ -267,8 +253,8 @@ public class BagOfFeaturesTest {
         options.cbConfig.add(1,conf);
         
         /* Check Attributes class */
-        Reader OWReaderARF4a = new Reader("JUnitTestData/testdata4.arff","","");
-        Reader OWReaderARF4b = new Reader("JUnitTestData/testdata4.arff","n11110c","");
+        Reader OWReaderARF4a = new Reader("JUnitTestData/testdata4.arff","");
+        Reader OWReaderARF4b = new Reader("JUnitTestData/testdata4.arff","n11110c");
         OWReaderARF4a.readFile();
         OWReaderARF4b.readFile();
         
@@ -348,30 +334,18 @@ public class BagOfFeaturesTest {
     public void testBag() {
         System.out.print("Test: regression test BoF ...");
         Options options = new Options();
-        options.bLogWeighting  = false;
-        options.bIDFWeighting  = false;
-        options.bUnigram.add(false);
-        options.bUnigram.add(false);
-        options.bBigram.add(false);
-        options.bBigram.add(false);
-        options.bTrigram.add(false);
-        options.bTrigram.add(false);
-        options.numAssignments.add(0);
-        options.numAssignments.add(2);
-        options.gmmEncoding.add(0);
-        options.gmmEncoding.add(0);
-        options.gaussianEncoding.add(0.0f);
-        options.gaussianEncoding.add(0.0f);
-        options.offCodewords.add(0.0f);
-        options.offCodewords.add(0.0f);
         CodebookConfig conf = new CodebookConfig(50,"random",1.0f,false,1.0f,false,10,0);
+        options.bLogWeighting = false;
+        options.bIDFWeighting = false;
+        options.numAssignments = new int [10];
+        options.numAssignments[1] = 2;
         options.cbConfig = new ArrayList<CodebookConfig>();
         options.cbConfig.add(0,conf);
         options.cbConfig.add(1,conf);  /* TODO: Numeric codebook is expected at position 1 - should be more generic in future */
         
-        Reader rInput = new Reader("JUnitTestData/random1_wLabels.arff","","",false);
+        Reader rInput = new Reader("JUnitTestData/random1_wLabels.arff","",false);
         rInput.readFile();
-        Reader rRef = new Reader("JUnitTestData/boaw_a2size50_random1.arff","","",false);
+        Reader rRef = new Reader("JUnitTestData/boaw_a2size50_random1.arff","",false);
         rRef.readFile();
         
         DataManager DMinput = new DataManager(rInput); 

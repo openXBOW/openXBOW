@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -23,8 +22,8 @@ package openxbow.codebooks;
 
 public class CodebookConfig {
     protected enum cbtype {text,numeric};
-    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm,em,empp,emkm,emkmpp,generic};
-    
+    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm,generic};
+        
     protected cbtype codebookType;
     
     /* Numeric */
@@ -75,14 +74,6 @@ public class CodebookConfig {
             this.generationMethod = cbgenmethod.kmeansnorm;
         } else if (strGenerationMethod.equals("kmeans++norm")) {
             this.generationMethod = cbgenmethod.kmeansppnorm;
-        } else if (strGenerationMethod.equals("em")) {
-            this.generationMethod = cbgenmethod.em;
-        } else if (strGenerationMethod.equals("em++")) {
-            this.generationMethod = cbgenmethod.empp;
-        } else if (strGenerationMethod.equals("em-kmeans")) {
-            this.generationMethod = cbgenmethod.emkm;
-        } else if (strGenerationMethod.equals("em-kmeans++")) {
-            this.generationMethod = cbgenmethod.emkmpp;
         } else if (strGenerationMethod.equals("generic")) {
             this.generationMethod = cbgenmethod.generic;
         } else {
@@ -141,13 +132,4 @@ public class CodebookConfig {
         this.nCharGram    = nCharGram;
     }
     
-    
-    public boolean isNumeric() {
-    	if (this.codebookType==cbtype.numeric) {
-    		return true;
-    	}
-    	else {
-    		return false;
-    	}
-    }
 }

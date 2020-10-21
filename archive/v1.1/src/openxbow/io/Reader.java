@@ -1,9 +1,8 @@
 /*F************************************************************************
  * openXBOW - the Passau Open-Source Crossmodal Bag-of-Words Toolkit
- * Copyright (C) 2016-2020, 
- *   Maximilian Schmitt & Björn Schuller: University of Passau, 
- *    University of Augsburg.
- *   Contact: maximilian.schmitt@mailbox.org
+ * Copyright (C) 2016-2017, 
+ *   Maximilian Schmitt & Björn Schuller: University of Passau.
+ *   Contact: maximilian.schmitt@uni-passau.de
  *  
  *  This program is free software: you can redistribute it and/or modify 
  *  it under the terms of the GNU General Public License as published by 
@@ -45,17 +44,17 @@ public class Reader {
     
     
     public Reader(String fileName) {
-        this(fileName,"","",false);
+        this(fileName,"",false);
     }
     
-    public Reader(String fileName, String strAttributes, String strAttributesAlt) {
-        this(fileName,strAttributes,strAttributesAlt,false);
+    public Reader(String fileName, String strAttributes) {
+        this(fileName,strAttributes,false);
     }
     
-    public Reader(String fileName, String strAttributes, String strAttributesAlt, boolean bTimeStamp) {
+    public Reader(String fileName, String strAttributes, boolean bTimeStamp) {
         this.fileName    = fileName;
         this.bTimeStamp  = bTimeStamp;
-        this.attributes  = new Attributes(strAttributes, strAttributesAlt);
+        this.attributes  = new Attributes(strAttributes);
         this.inputData   = new ArrayList<Object[]>();
         
         if (fileName.endsWith(".arff")) {
@@ -256,7 +255,5 @@ public class Reader {
     public List<Integer> getIndexesLabels() {
         return attributes.getIndexesLabels();
     }
-    public int getNumberOfFeatureClasses() {
-        return attributes.getNumberOfFeatureClasses();
-    }
+    
 }

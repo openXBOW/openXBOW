@@ -20,8 +20,6 @@
 
 package openxbow.codebooks;
 
-import java.util.Random;
-
 public class CodebookNumericGeneric {
     private CodebookConfig config = null;
     
@@ -29,7 +27,7 @@ public class CodebookNumericGeneric {
         this.config = config;
     }
     
-    protected float[][] generateCodebook(int numFeatures) {  /* Standard (systematic) method */
+    protected float[][] generateCodebook(int numFeatures) {
         int   codebookSize  = (int) Math.round(Math.pow(2, numFeatures));
         float genericOffset = config.genericOffset;
         
@@ -43,22 +41,6 @@ public class CodebookNumericGeneric {
             for (int m=0; m < numFeatures; m++) {
                 int denom = (int) Math.pow(2, numFeatures-m-1);
                 codewords[k][m] = (float) Math.pow(-1.0f, Math.floor(k/denom)+1) * genericOffset;
-            }
-        }
-        
-        return codewords;
-    }
-    
-    protected float[][] generateCodebookPdf(int numFeatures) {
-        int codebookSize = config.sizeCodebookInitial;
-        
-        float[][] codewords = new float[codebookSize][numFeatures];
-        
-        Random randGenerator = new Random(config.randomSeed);
-        
-        for (int k=0; k < codebookSize; k++) {
-            for (int m=0; m < numFeatures; m++) {
-                codewords[k][m] = (float) randGenerator.nextGaussian();
             }
         }
         

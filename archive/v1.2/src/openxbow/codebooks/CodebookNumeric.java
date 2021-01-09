@@ -274,10 +274,6 @@ public class CodebookNumeric extends Codebook {
                 CodebookNumericGeneric cbGeneric = new CodebookNumericGeneric(config);
                 codewords = cbGeneric.generateCodebook(train.trainingData.get(0).length);
             }
-            else if (config.generationMethod==cbgenmethod.pdf) {
-                CodebookNumericGeneric cbGeneric = new CodebookNumericGeneric(config);
-                codewords = cbGeneric.generateCodebookPdf(train.trainingData.get(0).length);
-            }
             else {
                 System.err.println("Error: Codebook generation method unknown.");
             }

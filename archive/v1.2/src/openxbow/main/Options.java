@@ -155,7 +155,7 @@ public class Options {
         
         /* Codebook numeric - codebook specific options */
         String  strSizeCodebook     = OWParser.getOption("size").getParamList().get(0).toString();      /* (Initial) number of words */
-        String  strGenerationMethod = OWParser.getOption("c").getParamList().get(0).toString();         /* k-means, random, EM, pdf, generic */
+        String  strGenerationMethod = OWParser.getOption("c").getParamList().get(0).toString();         /* k-means, random, EM, generic */
         String  strGenericOffset    = OWParser.getOption("gen").getParamList().get(0).toString();       /* Value for generic codebook generation */
         String  strReduceCodebook   = OWParser.getOption("reduce").getParamList().get(0).toString();    /* Merge similar codewords (threshold) */
         String  strNumTraining      = OWParser.getOption("numTrain").getParamList().get(0).toString();  /* Number of features considered for clustering (0: all input vectors) */
@@ -413,7 +413,7 @@ public class Options {
         OWParser.addOption("standardizeInput", "Standardize (z-score) all numeric input features.\n"
                                              + "The parameters are stored in the codebook file (-B) and then used for standardization of test data (-b) in an online approach.");
         OWParser.addOption("normalizeInput", "Normalize all numeric input features (min->max is normalized to 0->1).\n"
-                                           + "The parameters are stored in the codebook file (-B) and then used for normalization of test data (-b) in an online approach.");
+                                           + "The parameters are stored in the codebook file (-B) and then used for standardization of test data (-b) in an online approach.");
         
         /* Codebook numeric */
         OWParser.addOption("size", "500", "Set the (initial) size p of the codebook. (default: size=500)\n"
@@ -427,10 +427,8 @@ public class Options {
                                           + "p=em++: Employ EM (expectation maximization) clustering with a random++ sampling for cluster initialization.\n"
                                           + "p=em-kmeans: Employ EM (expectation maximization) clustering with kmeans for cluster initialization.\n"
                                           + "p=em-kmeans++: Employ EM (expectation maximization) clustering with kmeans++ for cluster initialization.\n"
-                                          + "p=pdf: Generate a data-independent codebook with entries sampled from a one-dimensional Gaussian pdf (zero mean, unit variance).\n"
-                                          + "       The option '-standardizeInput' is highly recommended when using this option.\n" 
                                           + "p=generic: Generate a generic codebook (independent from data, see option '-gen'). The parameter '-size' is not relevant when selecting this method.");
-        OWParser.addOption("gen", "1.0", "Offset p for the values in the generic codebook ('-c generic').\n"
+        OWParser.addOption("gen", "1.0", "Offset p for the values in the generic codebook.\n"
                                        + "Example: A codebook with two input features will look like this: -p,-p  -p,+p  +p,-p  +p,+p");
         OWParser.addOption("reduce", "0.0", "Reduce the size of the codebook by merging words which are correlated with each other. PCC with threshold p is considered.");
         OWParser.addOption("supervised", "Generate a codebook for each class separately, first, then merge all codebooks. (Not available for numeric labels.)");
@@ -486,7 +484,7 @@ public class Options {
         OWParser.addOption("standardizeOutput", "Standardize (z-score) all output bag-of-words features.\n"
                                               + "The parameters are stored in the codebook file (-B) and then used for standardization of test data (-b) in an online approach.");
         OWParser.addOption("normalizeOutput", "Normalize all output features (term frequencies, min->max is normalized to 0->1).\n"
-                                            + "The parameters are stored in the codebook file (-B) and then used for normalization of test data (-b) in an online approach.");
+                                            + "The parameters are stored in the codebook file (-B) and then used for standardization of test data (-b) in an online approach.");
     }
     
     

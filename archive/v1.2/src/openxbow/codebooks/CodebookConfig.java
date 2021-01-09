@@ -23,7 +23,7 @@ package openxbow.codebooks;
 
 public class CodebookConfig {
     protected enum cbtype {text,numeric};
-    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm,em,empp,emkm,emkmpp,generic,pdf};
+    protected enum cbgenmethod {random,randompp,kmeans,kmeanspp,kmeansnorm,kmeansppnorm,em,empp,emkm,emkmpp,generic};
     
     protected cbtype codebookType;
     
@@ -85,8 +85,6 @@ public class CodebookConfig {
             this.generationMethod = cbgenmethod.emkmpp;
         } else if (strGenerationMethod.equals("generic")) {
             this.generationMethod = cbgenmethod.generic;
-        } else if (strGenerationMethod.equals("pdf")) {
-            this.generationMethod = cbgenmethod.pdf;  /* tentative (sample from a Gaussian pdf - LLDs should be z-score normalized (standardized in order to use this option) */
         } else {
             System.err.println("Error: CodebookConfig: Codebook generation method is not valid!");
         }

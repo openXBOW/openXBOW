@@ -32,7 +32,7 @@ import openxbow.io.WriterIndex;
 public class OpenXBOW {
     
     public static void main(String[] args) {
-        String VERSION = "1.3";
+        String VERSION = "1.3.1";
         
         /* Objects */
         Reader        reader     = null;

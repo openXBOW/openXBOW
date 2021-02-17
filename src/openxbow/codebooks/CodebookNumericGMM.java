@@ -155,6 +155,9 @@ public class CodebookNumericGMM extends CodebookNumeric {
                         }
                         for (int m=0; m < numFeatures; m++) {
                             covariances[k][m] /= response[k];
+                            if (covariances[k][m] < Float.MIN_NORMAL) {  /* Lower values might occur due to division by response[k] and will result in infinity when inverted. */
+                            	covariances[k][m] = Float.MIN_NORMAL;
+                            }
                         }
                     }
                 }

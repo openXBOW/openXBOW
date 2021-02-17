@@ -3,7 +3,12 @@ Changes:
 
 ==============================
 
-Version 1.3 (previous version 1.1) - December 2020:
+Version 1.3.1 (previous version 1.3) - February 2021:
+
+-Bugfix in EM-clustering (fails in rare cases, leading to NaN values).
+
+
+Version 1.3 (previous version 1.2) - December 2020:
 
 -Version 1.2 has been shifted to "archive/"
 

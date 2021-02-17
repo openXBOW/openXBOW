@@ -15,7 +15,7 @@ For more information, please visit the official websites:
 http://sewaproject.eu  
 http://ihearu.eu  
 
-(C) 2016-2020, published under GPL v3, please check the file LICENSE.txt for details.
+(C) 2016-2021, published under GPL v3, please check the file LICENSE.txt for details.
 Maximilian Schmitt, Björn Schuller: University of Passau, University of Augsburg.  
 Contact: maximilian.schmitt@mailbox.org  
 
